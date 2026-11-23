@@ -1749,21 +1749,41 @@ class AppController {
     }
   }
 
-  // --- Tải Ảnh Trực Tiếp Từng File JPG (Không nén ZIP) ---
+  // --- Tải Ảnh Trực Tiếp Từng File JPG & Lưu Thẳng Vào Thư Viện Ảnh iPhone ---
   async downloadSinglePhoto(photo) {
     if (!photo) return;
     const fileName = photo.name && (photo.name.toLowerCase().endsWith('.jpg') || photo.name.toLowerCase().endsWith('.jpeg') || photo.name.toLowerCase().endsWith('.png'))
       ? photo.name
       : `${photo.name || photo.id}.jpg`;
 
-    this.showToast(`Đang tải ảnh ${fileName}...`, 'info');
+    this.showToast(`Đang chuẩn bị ảnh ${fileName}...`, 'info');
     const directUrl = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
 
     try {
       const res = await fetch(directUrl);
       if (!res.ok) throw new Error('Fetch status ' + res.status);
       const originalBlob = await res.blob();
-      // Ép kiểu application/octet-stream để trình duyệt (đặc biệt là Safari iPhone) tải file JPG về máy thay vì mở tab
+
+      // Tối ưu số 1 cho iPhone / iPad (iOS Safari):
+      // Dùng Web Share API để mở menu iOS, có sẵn nút "Lưu hình ảnh" lưu THẲNG vào Thư viện ảnh (Photos)!
+      if (navigator.canShare && typeof File === 'function') {
+        try {
+          const file = new File([originalBlob], fileName, { type: 'image/jpeg' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: fileName,
+            });
+            this.showToast(`✅ Bạn chọn "Lưu hình ảnh" để lưu thẳng vào Thư viện ảnh nhé!`, 'success');
+            return;
+          }
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') return; // Người dùng đóng menu chia sẻ
+          console.warn('Share API error, fallback to direct download:', shareErr);
+        }
+      }
+
+      // Phương thức tải file nhị phân trực tiếp (Máy tính, Android, v.v.)
       const downloadBlob = new Blob([originalBlob], { type: 'application/octet-stream' });
       const blobUrl = URL.createObjectURL(downloadBlob);
       const a = document.createElement('a');
@@ -1780,7 +1800,7 @@ class AppController {
       console.warn('Lỗi tải trực tiếp blob, mở ảnh gốc:', err);
       const w = window.open(directUrl, '_blank');
       if (w) {
-        this.showToast(`Đã mở ảnh gốc, bạn nhấn giữ ảnh để "Lưu vào Ảnh" nhé!`, 'info');
+        this.showToast(`Đã mở ảnh gốc, bạn nhấn giữ 1 giây vào ảnh rồi chọn "Lưu vào Ảnh" nhé!`, 'info');
       } else {
         window.location.href = directUrl;
       }
@@ -1791,6 +1811,35 @@ class AppController {
     if (!photoList || photoList.length === 0) {
       alert(`Chưa có ${label} nào để tải!`);
       return;
+    }
+
+    // Tối ưu lưu cả chùm ảnh thẳng vào Thư viện iPhone (Photos) qua menu iOS nếu danh sách <= 15 ảnh
+    if (navigator.canShare && typeof File === 'function' && photoList.length <= 15) {
+      this.showToast(`Đang chuẩn bị ${photoList.length} ảnh để lưu vào Thư viện ảnh...`, 'info');
+      try {
+        const fileList = [];
+        for (const p of photoList) {
+          const directUrl = p.originalUrl || `https://lh3.googleusercontent.com/d/${p.id}=s0`;
+          const res = await fetch(directUrl);
+          if (res.ok) {
+            const b = await res.blob();
+            const fName = p.name && (p.name.toLowerCase().endsWith('.jpg') || p.name.toLowerCase().endsWith('.jpeg')) ? p.name : `${p.name || p.id}.jpg`;
+            fileList.push(new File([b], fName, { type: 'image/jpeg' }));
+          }
+        }
+
+        if (fileList.length > 0 && navigator.canShare({ files: fileList })) {
+          await navigator.share({
+            files: fileList,
+            title: `Bộ ${fileList.length} ảnh ${this.clientName}`,
+          });
+          this.showToast(`✅ Bấm "Lưu ${fileList.length} hình ảnh" để lưu toàn bộ vào Thư viện ảnh!`, 'success');
+          return;
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.warn('Lỗi share chùm ảnh trên iOS:', err);
+      }
     }
 
     if (photoList.length > 25) {
@@ -1837,7 +1886,7 @@ class AppController {
       }
     }
 
-    this.showToast(`✅ Đã tải xong ${photoList.length} ảnh JPG trực tiếp về máy!`, 'success');
+    this.showToast(`✅ Đã tải xong ${photoList.length} ảnh JPG về máy!`, 'success');
   }
 
   async downloadSelectedDirect() {
