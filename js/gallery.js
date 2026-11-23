@@ -2,8 +2,8 @@
  * Phân hệ 3.2: Lưới ảnh Responsive Justified Grid giữ nguyên tỷ lệ khung hình gốc
  * (gap 8px trên mobile, 12px trên desktop) + Lazy Loading qua IntersectionObserver.
  */
-import { attachImageWithFallback } from './drive.js?v=8.2';
-import { ICONS } from './icons.js?v=8.2';
+import { attachImageWithFallback } from './drive.js?v=8.3';
+import { ICONS } from './icons.js?v=8.3';
 
 export class GalleryGrid {
   constructor(containerEl, callbacks) {

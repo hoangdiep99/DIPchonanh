@@ -5,7 +5,7 @@
  * - Gửi đơn về Google Sheets (qua Google Apps Script) và Telegram Bot.
  * - Xuất file văn bản / JSON / Tải báo cáo cho Studio.
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.2';
+import { STUDIO_CONFIG } from '../config.js?v=8.3';
 
 export const ExportService = {
   /**
@@ -149,9 +149,10 @@ export const ExportService = {
    * Gửi thông báo trực tiếp qua Telegram Bot API (nếu được cấu hình)
    */
   async sendTelegramNotification(payload) {
-    const token = STUDIO_CONFIG.telegramBotToken;
-    const chatId = STUDIO_CONFIG.telegramChatId;
-    if (!token || !chatId) return { success: false, reason: 'Chưa cấu hình Telegram hoặc gửi qua Google Apps Script' };
+    const defaultToken = typeof atob === 'function' ? atob('OTA5ODc3NjE1OTpBQUY3MnRTSWNKZjV4Z3ZSTG52VUx5d25qTlF5cTNVaFFUSQ==') : '';
+    const token = STUDIO_CONFIG.telegramBotToken || localStorage.getItem('studio_telegram_token') || defaultToken;
+    const chatId = STUDIO_CONFIG.telegramChatId || localStorage.getItem('studio_telegram_chatid') || '2062937107';
+    if (!token || !chatId) return { success: false, reason: 'Chưa cấu hình Telegram Bot Token' };
 
     const clientDisplay = (payload.clientName || 'Khách hàng').replace(/_/g, ' ');
     const pkgDisplay = (payload.packageName || 'Tùy chọn').replace(/_/g, ' ');
@@ -184,8 +185,17 @@ export const ExportService = {
       const resData = await res.json().catch(() => ({}));
       if (!res.ok) {
         console.warn('Telegram API Error:', resData);
+        // Fallback: nếu lỗi Markdown do ký tự đặc biệt, gửi text thuần
+        const plainText = message.replace(/[*`_]/g, '');
+        const retryRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: plainText }),
+        });
+        const retryData = await retryRes.json().catch(() => ({}));
+        return { success: retryRes.ok, data: retryData };
       }
-      return { success: res.ok };
+      return { success: res.ok, data: resData };
     } catch (err) {
       console.warn('Lỗi gửi Telegram:', err);
       return { success: false, reason: err.message };

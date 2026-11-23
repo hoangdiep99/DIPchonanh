@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.2';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.2';
-import { GalleryGrid } from './gallery.js?v=8.2';
-import { LightboxModal } from './lightbox.js?v=8.2';
-import { StorageManager } from './storage.js?v=8.2';
-import { FaceFilterEngine } from './face-filter.js?v=8.2';
-import { ExportService } from './export.js?v=8.2';
-import { AdminManager } from './admin.js?v=8.2';
+import { STUDIO_CONFIG } from '../config.js?v=8.3';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.3';
+import { GalleryGrid } from './gallery.js?v=8.3';
+import { LightboxModal } from './lightbox.js?v=8.3';
+import { StorageManager } from './storage.js?v=8.3';
+import { FaceFilterEngine } from './face-filter.js?v=8.3';
+import { ExportService } from './export.js?v=8.3';
+import { AdminManager } from './admin.js?v=8.3';
 
 class AppController {
   constructor() {
@@ -1533,7 +1533,7 @@ class AppController {
     this.submitSuccessBanner.classList.remove('hidden');
 
     if (teleRes && teleRes.success) {
-      this.showToast('✅ Đã gửi đơn thành công và báo về Telegram Studio!', 'success');
+      this.showToast('✅ Đã gửi đơn và thông báo tới Telegram @locanh_bot thành công!', 'success');
     } else {
       this.showToast('Gửi danh sách thành công tới Studio!', 'success');
     }
