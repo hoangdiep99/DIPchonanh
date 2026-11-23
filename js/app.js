@@ -46,19 +46,26 @@ class AppController {
   }
 
   async init() {
-    this.parseQueryParams();
-    this.bindDOM();
-    this.initLightbox();
-    this.initAdmin();
-    this.initQuickDriveModal();
-    this.initFaceModal();
-    this.initSubmitModal();
-    this.initSyncModal();
+    try {
+      this.parseQueryParams();
+      this.bindDOM();
+      this.initLightbox();
+      this.initAdmin();
+      this.initQuickDriveModal();
+      this.initFaceModal();
+      this.initSubmitModal();
+      this.initSyncModal();
 
-    window.addEventListener('hashchange', () => this.handleRoute());
-    this.handleRoute();
+      window.addEventListener('hashchange', () => this.handleRoute());
+      this.handleRoute();
 
-    await this.loadAlbumData();
+      await this.loadAlbumData();
+    } catch (err) {
+      console.error('Lỗi khởi động ứng dụng:', err);
+      if (this.showState) {
+        this.showState('error', err.message || 'Không thể khởi động ứng dụng. Vui lòng bấm thử lại.');
+      }
+    }
   }
 
   parseQueryParams() {
@@ -1535,7 +1542,15 @@ class AppController {
   }
 }
 
-// Khởi động ứng dụng khi DOM sẵn sàng
-document.addEventListener('DOMContentLoaded', () => {
-  window.__studioApp = new AppController();
-});
+// Khởi động ứng dụng ngay khi DOM sẵn sàng hoặc nếu đã sẵn sàng từ trước
+function startStudioApp() {
+  if (!window.__studioApp) {
+    window.__studioApp = new AppController();
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startStudioApp);
+} else {
+  startStudioApp();
+}
