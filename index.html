@@ -30,8 +30,8 @@
         </div>
 
         <div class="header-chips">
-          <span class="meta-pill" id="header-limit-pill" style="cursor:pointer;" title="Bấm để chỉnh sửa số lượng ảnh cần chọn">
-            Số lượng chọn: <strong id="header-limit-count" class="tabular-nums">Không giới hạn</strong> ✏️
+          <span class="meta-pill" id="header-limit-pill" style="cursor:pointer;" title="Định mức số lượng ảnh cần chọn của gói">
+            Số lượng chọn: <strong id="header-limit-count" class="tabular-nums">Không giới hạn</strong> <span id="header-limit-edit-icon" class="hidden">✏️</span>
           </span>
           <button type="button" id="btn-cloud-sync" class="cloud-sync-pill" title="Bấm để đồng bộ ngay với các thiết bị khác (điện thoại, máy tính)">
             <span class="sync-dot"></span>
@@ -39,8 +39,8 @@
             <span id="sync-status-text">Đồng bộ đám mây</span>
           </button>
           <span id="draft-indicator" class="draft-indicator hidden">Đã lưu tự động</span>
-          <a href="#admin" id="btn-to-admin" class="btn btn-ghost btn-sm" title="Mở trang Quản trị Studio">
-            ⚙️ <span class="sr-only">Admin</span>
+          <a href="#admin" id="btn-to-admin" class="btn btn-admin-nav" title="Đăng nhập tài khoản Quản trị Studio">
+            <span id="admin-nav-icon">👤</span> <span id="admin-nav-text">Đăng nhập</span>
           </a>
         </div>
       </div>
@@ -249,26 +249,38 @@
 
     <!-- Dock thao tác nhanh có thể thu gọn dưới đáy Lightbox -->
     <div class="lightbox-dock-wrap">
-      <button type="button" id="lb-collapse-toggle" class="lb-collapse-toggle">Thu gọn để xem toàn ảnh</button>
-      <div id="lb-dock" class="lightbox-dock">
-        <div class="lb-action-row">
-          <div class="lb-toggle-group">
-            <button type="button" id="lb-heart-btn" class="lb-pill-btn btn-heart">
-              <span>Chọn ảnh</span>
-            </button>
-            <button type="button" id="lb-star-btn" class="lb-pill-btn btn-star">
-              <span>Ưu tiên / In</span>
-            </button>
-          </div>
-          <button type="button" id="lb-face-btn" class="btn btn-secondary btn-sm" title="Tìm người trong ảnh này">
-            👤 Tìm người trong ảnh này
-          </button>
+      <!-- Bảng ghi chú và tags mở rộng (mở khi bấm 💬 Ghi chú) -->
+      <div id="lb-notes-drawer" class="lb-notes-drawer hidden">
+        <div class="lb-notes-drawer-head">
+          <span>Yêu cầu sửa / Ghi chú cho ảnh:</span>
+          <button type="button" id="lb-notes-close" class="btn-notes-close" aria-label="Đóng ghi chú">✕</button>
         </div>
-
         <div id="lb-quick-tags" class="quick-tags-row"></div>
-
         <div class="lb-note-row">
           <input type="text" id="lb-note-input" class="lb-note-input" placeholder="Nhập thêm ghi chú riêng (VD: bóp eo bên trái, xóa bóng đèn...)" aria-label="Ghi chú ảnh">
+        </div>
+      </div>
+
+      <div id="lb-dock" class="lightbox-dock">
+        <!-- 1 Hàng Ngang Tinh Gọn Cho Cả Điện Thoại Và Máy Tính -->
+        <div class="lb-action-row">
+          <button type="button" id="lb-heart-btn" class="lb-pill-btn btn-heart">
+            <span class="lb-pill-icon">❤️</span>
+            <span class="lb-pill-text">Chọn ảnh</span>
+          </button>
+          <button type="button" id="lb-star-btn" class="lb-pill-btn btn-star">
+            <span class="lb-pill-icon">⭐</span>
+            <span class="lb-pill-text">Ưu tiên</span>
+          </button>
+          <button type="button" id="lb-note-toggle-btn" class="lb-pill-btn btn-note-toggle" title="Thêm ghi chú hoặc yêu cầu sửa ảnh">
+            <span class="lb-pill-icon">💬</span>
+            <span class="lb-pill-text">Ghi chú</span>
+            <span id="lb-note-dot" class="note-has-dot hidden"></span>
+          </button>
+          <button type="button" id="lb-face-btn" class="lb-pill-btn btn-face" title="Tìm người trong ảnh này">
+            <span class="lb-pill-icon">👤</span>
+            <span class="lb-pill-text">Tìm mặt</span>
+          </button>
         </div>
       </div>
     </div>
@@ -385,6 +397,18 @@
           <div id="kpi-extra-box" class="kpi-box kpi-extra hidden">
             <div class="kpi-label">Ảnh phát sinh ngoài gói</div>
             <div id="kpi-extra-val" class="kpi-value">+0</div>
+          </div>
+        </div>
+
+        <!-- Cảnh báo phụ phí khi chọn vượt định mức gói -->
+        <div id="extra-fee-alert" class="extra-fee-alert hidden">
+          <div class="extra-fee-header">
+            <span class="extra-fee-badge">⚠️ Chọn vượt định mức gói</span>
+            <span id="extra-fee-total" class="extra-fee-price">+0 VNĐ</span>
+          </div>
+          <div class="extra-fee-body">
+            Bạn đã chọn vượt định mức <strong id="extra-fee-count">0</strong> ảnh. 
+            Mỗi ảnh sửa thêm ngoài gói có phụ phí là <strong>25.000 VNĐ / ảnh</strong>.
           </div>
         </div>
 
@@ -764,6 +788,6 @@
   </script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=8.1"></script>
+  <script type="module" src="js/app.js?v=8.2"></script>
 </body>
 </html>

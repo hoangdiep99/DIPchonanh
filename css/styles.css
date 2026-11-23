@@ -1269,8 +1269,8 @@ a {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  height: calc(100vh - 160px);
-  max-height: calc(100vh - 160px);
+  height: calc(100dvh - 120px);
+  max-height: calc(100dvh - 120px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1280,11 +1280,11 @@ a {
   padding: 8px 12px;
 }
 
-@media (max-width: 639px) {
+@media (max-width: 768px) {
   .lightbox-stage {
-    height: calc(100vh - 180px);
-    max-height: calc(100vh - 180px);
-    padding: 4px;
+    height: calc(100dvh - 100px);
+    max-height: calc(100dvh - 100px);
+    padding: 2px 4px;
   }
 }
 
@@ -1302,7 +1302,7 @@ a {
 }
 
 .lightbox-img {
-  max-width: 96vw;
+  max-width: 98vw;
   max-height: 100%;
   width: auto;
   height: auto;
@@ -1349,75 +1349,46 @@ a {
 
 @media (max-width: 639px) {
   .lb-nav-btn {
-    width: 36px;
-    height: 36px;
-    background: rgba(24, 24, 27, 0.42);
+    width: 34px;
+    height: 34px;
+    background: rgba(24, 24, 27, 0.48);
   }
-  .lb-nav-prev { left: 8px; }
-  .lb-nav-next { right: 8px; }
+  .lb-nav-prev { left: 6px; }
+  .lb-nav-next { right: 6px; }
 }
 
-/* Bottom Collapsible Quick-Action Dock inside Lightbox */
+/* Bottom Quick-Action Dock inside Lightbox — Tinh gọn 1 hàng ngang tối đa diện tích ảnh */
 .lightbox-dock-wrap {
   position: relative;
   z-index: 6;
-  padding: 0 12px calc(12px + var(--bottom-safe));
+  padding: 0 10px calc(8px + var(--bottom-safe));
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.lb-collapse-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 12px;
-  margin-bottom: 6px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(8px);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 11.5px;
-  font-weight: 500;
-}
-
-.lb-collapse-toggle:hover {
-  background: rgba(255, 255, 255, 0.24);
 }
 
 .lightbox-dock {
-  width: 100%;
-  max-width: 780px;
-  background: var(--bg-glass-strong);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-lg);
-  color: var(--ink-primary);
-  padding: 12px 14px;
+  width: auto;
+  max-width: 96vw;
+  background: rgba(18, 18, 20, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: #FFFFFF;
+  padding: 6px 12px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-shadow: var(--shadow-float);
-}
-
-.lightbox-dock.is-collapsed {
-  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .lb-action-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
-  flex-wrap: wrap;
-}
-
-.lb-toggle-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .lb-pill-btn {
@@ -1425,30 +1396,107 @@ a {
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-hairline);
-  background: var(--bg-surface);
-  color: var(--ink-primary);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
   font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 
-.lb-pill-btn svg {
-  width: 15px;
-  height: 15px;
+@media (max-width: 480px) {
+  .lb-pill-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    gap: 4px;
+  }
+}
+
+.lb-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .lb-pill-btn.btn-heart.is-active {
   background: var(--accent-heart);
   border-color: var(--accent-heart);
   color: #FFFFFF;
+  box-shadow: 0 2px 10px rgba(225, 29, 72, 0.45);
 }
 
 .lb-pill-btn.btn-star.is-active {
   background: var(--accent-star);
   border-color: var(--accent-star);
   color: #FFFFFF;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.45);
+}
+
+.lb-pill-btn.btn-note-toggle.is-active {
+  background: #3B82F6;
+  border-color: #3B82F6;
+  color: #FFFFFF;
+}
+
+.note-has-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #EF4444;
+  box-shadow: 0 0 6px #EF4444;
+  display: inline-block;
+}
+
+/* Bảng ghi chú và tags phụ (trượt mở khi bấm nút 💬 Ghi chú) */
+.lb-notes-drawer {
+  position: absolute;
+  bottom: 58px;
+  width: 94vw;
+  max-width: 520px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  color: var(--ink-primary);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  animation: slideDrawerUp 0.18s ease-out;
+}
+
+@keyframes slideDrawerUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lb-notes-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+.btn-notes-close {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-subtle);
+  color: var(--ink-secondary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn-notes-close:hover {
+  background: var(--bg-canvas);
+  color: var(--ink-primary);
 }
 
 .quick-tags-row {
@@ -1456,6 +1504,71 @@ a {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+/* Nút Đăng nhập / Quản trị Studio trên Header */
+.btn-admin-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(24, 24, 27, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink-primary);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.16s ease;
+}
+
+.btn-admin-nav:hover {
+  background: var(--ink-primary);
+  color: #FFFFFF;
+  border-color: var(--ink-primary);
+}
+
+.btn-admin-nav.is-logged-in {
+  background: #ecfdf5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+/* Cảnh báo phụ phí 25.000đ khi chọn vượt gói */
+.extra-fee-alert {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: #fff1f2;
+  border: 1.5px solid #fecdd3;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.extra-fee-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.extra-fee-badge {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent-heart);
+}
+
+.extra-fee-price {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent-heart);
+}
+
+.extra-fee-body {
+  font-size: 12px;
+  color: var(--ink-secondary);
+  line-height: 1.45;
 }
 
 .quick-tag-chip {

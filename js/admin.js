@@ -5,8 +5,8 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.1';
-import { extractDriveFolderId } from './drive.js?v=8.1';
+import { STUDIO_CONFIG } from '../config.js?v=8.2';
+import { extractDriveFolderId } from './drive.js?v=8.2';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_REMEMBER_KEY = 'studio_admin_remember';
@@ -112,10 +112,14 @@ export class AdminManager {
     });
   }
 
+  isLoggedIn() {
+    const isRemembered = localStorage.getItem(ADMIN_REMEMBER_KEY) === 'true';
+    return isRemembered || sessionStorage.getItem('studio_admin_session') === 'true';
+  }
+
   checkAuthState() {
     // Nếu trước đó đã tích chọn "Ghi nhớ trên máy tính này", tự động mở thẳng
-    const isRemembered = localStorage.getItem(ADMIN_REMEMBER_KEY) === 'true';
-    const isAuthed = isRemembered || sessionStorage.getItem('studio_admin_session') === 'true';
+    const isAuthed = this.isLoggedIn();
 
     if (this.loginCard) this.loginCard.classList.toggle('hidden', isAuthed);
     if (this.panelContent) this.panelContent.classList.toggle('hidden', !isAuthed);

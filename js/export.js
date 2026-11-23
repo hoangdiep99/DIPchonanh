@@ -5,7 +5,7 @@
  * - Gửi đơn về Google Sheets (qua Google Apps Script) và Telegram Bot.
  * - Xuất file văn bản / JSON / Tải báo cáo cho Studio.
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.1';
+import { STUDIO_CONFIG } from '../config.js?v=8.2';
 
 export const ExportService = {
   /**
@@ -90,7 +90,8 @@ export const ExportService = {
     );
     lines.push(`Ảnh ưu tiên / In ấn (★): ${payload.priorityCount} ảnh`);
     if (payload.overLimit > 0) {
-      lines.push(`⚠️ Số ảnh phát sinh ngoài gói: +${payload.overLimit} ảnh`);
+      const extraFee = payload.overLimit * 25000;
+      lines.push(`⚠️ Số ảnh phát sinh ngoài gói: +${payload.overLimit} ảnh (+${extraFee.toLocaleString('vi-VN')} VNĐ - 25.000đ/ảnh)`);
     }
     lines.push(``);
     lines.push(`📌 CHUỖI TÊN FILE LỌC NHANH (CAPTURE ONE / LIGHTROOM):`);
@@ -160,7 +161,9 @@ export const ExportService = {
       `👤 *Khách hàng:* ${clientDisplay}`,
       `📦 *Gói chụp:* ${pkgDisplay}`,
       `🔢 *Đã chọn:* ${payload.selectedCount} ảnh (★ Ưu tiên: ${payload.priorityCount})`,
-      payload.overLimit > 0 ? `⚠️ *Phát sinh:* +${payload.overLimit} ảnh` : '',
+      payload.overLimit > 0
+        ? `⚠️ *Phát sinh ngoài gói:* +${payload.overLimit} ảnh (+${(payload.overLimit * 25000).toLocaleString('vi-VN')} VNĐ)`
+        : '',
       `\n*Dán nhanh vào Capture One / Lightroom:*`,
       `\`${payload.c1StringNoExt}\``,
     ]

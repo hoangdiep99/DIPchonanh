@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.1';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.1';
-import { GalleryGrid } from './gallery.js?v=8.1';
-import { LightboxModal } from './lightbox.js?v=8.1';
-import { StorageManager } from './storage.js?v=8.1';
-import { FaceFilterEngine } from './face-filter.js?v=8.1';
-import { ExportService } from './export.js?v=8.1';
-import { AdminManager } from './admin.js?v=8.1';
+import { STUDIO_CONFIG } from '../config.js?v=8.2';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.2';
+import { GalleryGrid } from './gallery.js?v=8.2';
+import { LightboxModal } from './lightbox.js?v=8.2';
+import { StorageManager } from './storage.js?v=8.2';
+import { FaceFilterEngine } from './face-filter.js?v=8.2';
+import { ExportService } from './export.js?v=8.2';
+import { AdminManager } from './admin.js?v=8.2';
 
 class AppController {
   constructor() {
@@ -138,12 +138,12 @@ class AppController {
     this.btnCloudSync?.addEventListener('click', () => this.syncCloudNow(true));
     this.barBtnRefresh?.addEventListener('click', () => this.refreshAlbum());
 
-    // Tự động kiểm tra và đồng bộ từ đám mây mỗi 5 giây
+    // Tự động kiểm tra và đồng bộ từ đám mây mỗi 1.2 giây (tốc độ cao thời gian thực)
     setInterval(() => {
       if (document.visibilityState === 'visible' && this.folderId && !this.isSyncing) {
         this.pullCloudChanges(false);
       }
-    }, 5000);
+    }, 1200);
 
     // Kéo dữ liệu ngay khi người dùng chuyển tab quay lại trang web
     document.addEventListener('visibilitychange', () => {
@@ -198,9 +198,22 @@ class AppController {
     if (this.headerLimitCount) this.headerLimitCount.textContent = this.limit > 0 ? `${this.limit} ảnh` : 'Không giới hạn';
     if (this.counterLimit) this.counterLimit.textContent = this.limit > 0 ? `${this.limit}` : '∞';
 
-    // Bấm vào chỗ số lượng ảnh để chỉnh sửa trực tiếp định mức ảnh
+    // Bấm vào chỗ số lượng ảnh để chỉnh sửa định mức ảnh (CHỈ ADMIN MỚI ĐƯỢC PHÉP SỬA)
     const headerLimitPill = document.getElementById('header-limit-pill');
+    this.headerLimitPill = headerLimitPill;
+    this.headerLimitEditIcon = document.getElementById('header-limit-edit-icon');
+    this.adminNavBtn = document.getElementById('btn-to-admin');
+    this.adminNavIcon = document.getElementById('admin-nav-icon');
+    this.adminNavText = document.getElementById('admin-nav-text');
+
     headerLimitPill?.addEventListener('click', () => {
+      const isAuth = Boolean(this.adminManager?.isLoggedIn());
+      if (!isAuth) {
+        if (confirm('Chỉ Quản trị viên Studio mới có quyền cài đặt định mức số lượng ảnh chọn của album này. Bạn có muốn chuyển sang trang Đăng nhập Quản trị không?')) {
+          window.location.hash = '#admin';
+        }
+        return;
+      }
       const currentVal = this.limit > 0 ? this.limit : '';
       const input = prompt('Nhập số lượng ảnh khách cần chọn (Ví dụ: 30, hoặc để trống = Không giới hạn):', currentVal);
       if (input !== null) {
@@ -335,6 +348,29 @@ class AppController {
       if (this.activeFaceFilter) {
         this.faceActiveBanner.classList.remove('hidden');
       }
+      this.updateAdminHeaderState();
+    }
+  }
+
+  updateAdminHeaderState() {
+    const isAuth = Boolean(this.adminManager?.isLoggedIn());
+    if (this.adminNavText) {
+      this.adminNavText.textContent = isAuth ? 'Quản trị' : 'Đăng nhập';
+    }
+    if (this.adminNavIcon) {
+      this.adminNavIcon.textContent = isAuth ? '⚙️' : '👤';
+    }
+    if (this.adminNavBtn) {
+      this.adminNavBtn.classList.toggle('is-logged-in', isAuth);
+      this.adminNavBtn.title = isAuth ? 'Đang đăng nhập quyền Quản trị Studio' : 'Đăng nhập tài khoản Quản trị Studio';
+    }
+    if (this.headerLimitEditIcon) {
+      this.headerLimitEditIcon.classList.toggle('hidden', !isAuth);
+    }
+    if (this.headerLimitPill) {
+      this.headerLimitPill.title = isAuth
+        ? 'Bấm để chỉnh sửa định mức số lượng ảnh chọn'
+        : 'Định mức số lượng ảnh chọn của gói (Chỉ Admin mới có quyền sửa)';
     }
   }
 
@@ -560,6 +596,18 @@ class AppController {
     this.updateCounters();
     this.updateSelectedToolbar();
     this.scheduleSaveDraft();
+
+    if (nextSelected && this.limit > 0) {
+      let selCount = 0;
+      for (const [id, s] of this.selectionsMap.entries()) {
+        if (s.selected) selCount++;
+      }
+      if (selCount > this.limit) {
+        const extra = selCount - this.limit;
+        const fee = extra * 25000;
+        this.showToast(`⚠️ Bạn đã chọn vượt định mức gói (+${extra} ảnh). Phí sửa thêm là 25.000 VNĐ / ảnh (+${fee.toLocaleString('vi-VN')} đ).`);
+      }
+    }
   }
 
   toggleStar(photoId) {
@@ -580,6 +628,18 @@ class AppController {
     this.updateCounters();
     this.updateSelectedToolbar();
     this.scheduleSaveDraft();
+
+    if (nextSelected && this.limit > 0) {
+      let selCount = 0;
+      for (const [id, s] of this.selectionsMap.entries()) {
+        if (s.selected) selCount++;
+      }
+      if (selCount > this.limit) {
+        const extra = selCount - this.limit;
+        const fee = extra * 25000;
+        this.showToast(`⚠️ Bạn đã chọn vượt định mức gói (+${extra} ảnh). Phí sửa thêm là 25.000 VNĐ / ảnh (+${fee.toLocaleString('vi-VN')} đ).`);
+      }
+    }
   }
 
   toggleTag(photoId, tag) {
@@ -600,6 +660,18 @@ class AppController {
     this.updateCounters();
     this.updateSelectedToolbar();
     this.scheduleSaveDraft();
+
+    if (nextSelected && this.limit > 0) {
+      let selCount = 0;
+      for (const [id, s] of this.selectionsMap.entries()) {
+        if (s.selected) selCount++;
+      }
+      if (selCount > this.limit) {
+        const extra = selCount - this.limit;
+        const fee = extra * 25000;
+        this.showToast(`⚠️ Bạn đã chọn vượt định mức gói (+${extra} ảnh). Phí sửa thêm là 25.000 VNĐ / ảnh (+${fee.toLocaleString('vi-VN')} đ).`);
+      }
+    }
   }
 
   updateNote(photoId, noteText) {
@@ -615,6 +687,18 @@ class AppController {
     this.updateCounters();
     this.updateSelectedToolbar();
     this.scheduleSaveDraft();
+
+    if (nextSelected && this.limit > 0) {
+      let selCount = 0;
+      for (const [id, s] of this.selectionsMap.entries()) {
+        if (s.selected) selCount++;
+      }
+      if (selCount > this.limit) {
+        const extra = selCount - this.limit;
+        const fee = extra * 25000;
+        this.showToast(`⚠️ Bạn đã chọn vượt định mức gói (+${extra} ảnh). Phí sửa thêm là 25.000 VNĐ / ảnh (+${fee.toLocaleString('vi-VN')} đ).`);
+      }
+    }
   }
 
   scheduleSaveDraft() {
@@ -628,7 +712,7 @@ class AppController {
       this.draftIndicator.classList.add('is-saved');
     }, 300);
 
-    // Tự động đẩy lên đám mây (Cloud Sync) sau 800ms
+    // Tự động đẩy lên đám mây (Cloud Sync) sau 350ms (Đồng bộ tốc độ cao 1 giây)
     const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
     if (webhookUrl && this.folderId) {
       if (this.cloudSyncDebounceTimer) clearTimeout(this.cloudSyncDebounceTimer);
@@ -637,7 +721,7 @@ class AppController {
         const ok = await StorageManager.saveCloudDraft(webhookUrl, this.folderId, this.clientName, this.selectionsMap);
         this.setCloudSyncStatus(ok ? 'synced' : 'error', ok ? 'Đã đồng bộ' : 'Lỗi đồng bộ');
         if (ok) this.lastCloudUpdatedAt = Date.now();
-      }, 800);
+      }, 350);
     }
   }
 
@@ -770,11 +854,12 @@ class AppController {
     this.countPillPriority.textContent = priorityCount;
     this.countPillNote.textContent = noteCount;
 
-    // Theo dõi định mức gói chụp (limit)
+    // Theo dõi định mức gói chụp (limit) và tính phụ phí 25.000 VNĐ / ảnh
     if (this.limit > 0 && selCount > this.limit) {
       const extra = selCount - this.limit;
+      const fee = extra * 25000;
       this.counterPill.classList.add('is-over-limit');
-      this.counterWarning.textContent = `(+${extra} phát sinh)`;
+      this.counterWarning.textContent = `(+${extra} ảnh phát sinh • +${fee.toLocaleString('vi-VN')} đ)`;
       this.counterWarning.classList.remove('hidden');
     } else {
       this.counterPill.classList.remove('is-over-limit');
@@ -1382,11 +1467,20 @@ class AppController {
     this.kpiPriorityVal.textContent = payload.priorityCount;
     this.kpiLimitVal.textContent = payload.limit > 0 ? `${payload.limit} ảnh` : 'Không giới hạn';
 
+    const extraFeeAlert = document.getElementById('extra-fee-alert');
+    const extraFeeCount = document.getElementById('extra-fee-count');
+    const extraFeeTotal = document.getElementById('extra-fee-total');
+
     if (payload.overLimit > 0) {
+      const extraFee = payload.overLimit * 25000;
       this.kpiExtraVal.textContent = `+${payload.overLimit} ảnh`;
       this.kpiExtraBox.classList.remove('hidden');
+      if (extraFeeAlert) extraFeeAlert.classList.remove('hidden');
+      if (extraFeeCount) extraFeeCount.textContent = `${payload.overLimit}`;
+      if (extraFeeTotal) extraFeeTotal.textContent = `+${extraFee.toLocaleString('vi-VN')} VNĐ`;
     } else {
       this.kpiExtraBox.classList.add('hidden');
+      if (extraFeeAlert) extraFeeAlert.classList.add('hidden');
     }
 
     this.updateC1ExportString();
@@ -1448,6 +1542,7 @@ class AppController {
   // --- Quản Trị (#admin) ---
   initAdmin() {
     this.adminManager = new AdminManager(this.adminView);
+    this.updateAdminHeaderState();
   }
 
   // --- Modal Dán Link Google Drive Nhanh ---

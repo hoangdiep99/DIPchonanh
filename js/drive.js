@@ -2,7 +2,7 @@
  * Phân hệ 4.1: Duyệt & Tối ưu tải ảnh Google Drive API v3 (3 cấp độ) + Demo Dataset.
  */
 
-import { STUDIO_CONFIG } from '../config.js?v=8.1';
+import { STUDIO_CONFIG } from '../config.js?v=8.2';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3/files';
 const SUPPORTED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);

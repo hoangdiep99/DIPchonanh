@@ -5,8 +5,8 @@
  * - Phóng to chi tiết (Zoom) bằng nút, cuộn chuột, chạm đúp, chụm 2 ngón & kéo di chuyển
  * - Khu vực thao tác nhanh nằm gọn dưới đáy (có thể thu gọn): Chọn, Ưu tiên, Quick Tags, Ghi chú
  */
-import { attachImageWithFallback } from './drive.js?v=8.1';
-import { ICONS } from './icons.js?v=8.1';
+import { attachImageWithFallback } from './drive.js?v=8.2';
+import { ICONS } from './icons.js?v=8.2';
 
 export class LightboxModal {
   constructor(modalEl, options) {
@@ -65,6 +65,10 @@ export class LightboxModal {
     this.heartBtn = this.modalEl.querySelector('#lb-heart-btn');
     this.starBtn = this.modalEl.querySelector('#lb-star-btn');
     this.faceBtn = this.modalEl.querySelector('#lb-face-btn');
+    this.noteToggleBtn = this.modalEl.querySelector('#lb-note-toggle-btn');
+    this.notesDrawer = this.modalEl.querySelector('#lb-notes-drawer');
+    this.notesCloseBtn = this.modalEl.querySelector('#lb-notes-close');
+    this.noteDot = this.modalEl.querySelector('#lb-note-dot');
     this.quickTagsEl = this.modalEl.querySelector('#lb-quick-tags');
     this.noteInput = this.modalEl.querySelector('#lb-note-input');
 
@@ -100,9 +104,23 @@ export class LightboxModal {
     this.zoomOutBtn.addEventListener('click', () => this.setZoom(this.scale - 0.6));
     this.zoomResetBtn.addEventListener('click', () => this.resetTransform());
 
-    this.collapseToggleBtn.addEventListener('click', () => {
+    this.collapseToggleBtn?.addEventListener('click', () => {
       this.isDockCollapsed = !this.isDockCollapsed;
       this.renderCollapseState();
+    });
+
+    this.noteToggleBtn?.addEventListener('click', () => {
+      if (!this.notesDrawer) return;
+      const isHidden = this.notesDrawer.classList.toggle('hidden');
+      this.noteToggleBtn.classList.toggle('is-active', !isHidden);
+      if (!isHidden) {
+        setTimeout(() => this.noteInput?.focus(), 80);
+      }
+    });
+
+    this.notesCloseBtn?.addEventListener('click', () => {
+      this.notesDrawer?.classList.add('hidden');
+      this.noteToggleBtn?.classList.remove('is-active');
     });
 
     this.heartBtn.addEventListener('click', () => {
@@ -331,8 +349,15 @@ export class LightboxModal {
     this.photos = photos;
     this.currentIndex = Math.max(0, Math.min(index, photos.length - 1));
     this.isOpen = true;
-    if (focusNote) this.isDockCollapsed = false;
-    this.renderCollapseState();
+    if (this.collapseToggleBtn) this.renderCollapseState();
+
+    if (focusNote) {
+      this.notesDrawer?.classList.remove('hidden');
+      this.noteToggleBtn?.classList.add('is-active');
+    } else {
+      this.notesDrawer?.classList.add('hidden');
+      this.noteToggleBtn?.classList.remove('is-active');
+    }
 
     this.modalEl.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -433,12 +458,18 @@ export class LightboxModal {
     if (syncNoteInput) {
       this.noteInput.value = sel.note || '';
     }
+
+    const hasNotes = Boolean((sel.tags && sel.tags.length) || (sel.note && sel.note.trim()));
+    if (this.noteDot) {
+      this.noteDot.classList.toggle('hidden', !hasNotes);
+    }
   }
 
   renderCollapseState() {
+    if (!this.collapseToggleBtn) return;
     this.dockEl.classList.toggle('is-collapsed', this.isDockCollapsed);
     this.collapseToggleBtn.innerHTML = this.isDockCollapsed
-      ? `${ICONS.chevronUp}<span>Hiện chọn ảnh & ghi chú</span>`
+      ? `${ICONS.chevronUp}<span>Hiện chọn ảnh</span>`
       : `${ICONS.chevronDown}<span>Thu gọn để xem toàn ảnh</span>`;
   }
 
