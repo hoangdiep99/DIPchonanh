@@ -1253,7 +1253,6 @@ class AppController {
       alert('Lỗi quét khuôn mặt: ' + err.message);
       this.closeFaceModal();
     }
-    }
   }
 
   saveCachedClusters() {
