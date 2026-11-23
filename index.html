@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>DIPchonanh — Chọn Ảnh Trực Tuyến</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Header Tối Giản (Minimalist Editorial Header) -->
+  <header id="site-header" class="site-header">
+    <div class="header-inner">
+      <div class="header-top">
+        <div class="brand-block">
+          <div class="brand-mark">DIP</div>
+          <div class="brand-meta">
+            <div class="studio-label">
+              <span id="header-studio-name">DIPchonanh</span>
+              <span id="demo-badge" class="demo-badge hidden">BẢN DEMO</span>
+            </div>
+            <h1 id="header-client-name" class="client-heading">Khách hàng</h1>
+          </div>
+        </div>
+
+        <div class="header-chips">
+          <span class="meta-pill" id="header-limit-pill" style="cursor:pointer;" title="Bấm để chỉnh sửa số lượng ảnh cần chọn">
+            Số lượng chọn: <strong id="header-limit-count" class="tabular-nums">Không giới hạn</strong> ✏️
+          </span>
+          <button type="button" id="btn-cloud-sync" class="cloud-sync-pill" title="Bấm để đồng bộ ngay với các thiết bị khác (điện thoại, máy tính)">
+            <span class="sync-dot"></span>
+            <span class="sync-icon">☁️</span>
+            <span id="sync-status-text">Đồng bộ đám mây</span>
+          </button>
+          <span id="draft-indicator" class="draft-indicator hidden">Đã lưu tự động</span>
+          <a href="#admin" id="btn-to-admin" class="btn btn-ghost btn-sm" title="Mở trang Quản trị Studio">
+            ⚙️ <span class="sr-only">Admin</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Thanh điều hướng thư mục phân cảnh, Sắp xếp & Tìm kiếm file -->
+      <div class="header-nav-row">
+        <nav id="folder-tabs" class="folder-tabs" aria-label="Thư mục phân cảnh"></nav>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div class="sort-box">
+            <select id="sort-select" class="sort-select" aria-label="Sắp xếp danh sách ảnh">
+              <option value="name_asc">Sắp xếp: Tên A → Z</option>
+              <option value="name_desc">Sắp xếp: Tên Z → A</option>
+              <option value="selected_first">Sắp xếp: Đã chọn lên đầu ♥</option>
+              <option value="priority_first">Sắp xếp: Ưu tiên lên đầu ★</option>
+              <option value="date_desc">Sắp xếp: Mới nhất trước</option>
+              <option value="date_asc">Sắp xếp: Cũ nhất trước</option>
+            </select>
+          </div>
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="10" cy="10" r="7"/><path d="M21 21l-6 -6"/>
+            </svg>
+            <input type="text" id="search-input" class="search-input" placeholder="Tìm theo tên file (VD: 0012)..." aria-label="Tìm theo tên file">
+            <button type="button" id="search-clear-btn" class="search-clear-btn hidden" aria-label="Xóa tìm kiếm">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Thanh Dán Link Google Drive (Ẩn mặc định để giao diện tinh gọn, tạo link trong #admin) -->
+  <section id="drive-quick-bar" class="drive-quick-bar hidden">
+    <div class="drive-quick-bar-card">
+      <div class="drive-quick-bar-label">
+        <span>📁 Dán link Drive:</span>
+      </div>
+      <input type="text" id="bar-drive-url" class="drive-quick-bar-input" placeholder="Dán link hoặc ID thư mục Google Drive vào đây (VD: https://drive.google.com/drive/folders/...)" aria-label="Dán link Google Drive">
+      <button type="button" id="bar-btn-open" class="btn btn-primary btn-sm">Mở Album</button>
+      <button type="button" id="bar-btn-refresh" class="btn btn-secondary btn-sm" title="Tải lại danh sách ảnh mới nhất từ Google Drive">🔄 Làm mới</button>
+      <button type="button" id="bar-btn-more" class="btn btn-ghost btn-sm" title="Tùy chỉnh thêm tên khách & gói chụp">⚙️ Tùy chọn</button>
+    </div>
+  </section>
+
+  <!-- Thanh Danh Sách Gương Mặt Tìm Thấy (People Bar 1-Chạm Trên Đầu) -->
+  <section id="people-bar" class="people-bar hidden" aria-label="Lọc nhanh theo từng người">
+    <div class="people-bar-card">
+      <div class="people-bar-header">
+        <div class="people-bar-title">
+          <span>👥 Gương mặt:</span>
+        </div>
+        <button type="button" id="btn-people-all" class="people-chip is-active">
+          <span>Tất cả</span>
+          <span id="people-all-count" class="people-count">0</span>
+        </button>
+      </div>
+      <div id="people-chips-list" class="people-chips-list"></div>
+    </div>
+  </section>
+
+  <!-- Banner thông báo khi đang áp dụng Lọc khuôn mặt -->
+  <section id="face-active-banner" class="face-active-banner hidden" aria-label="Bộ lọc khuôn mặt đang kích hoạt">
+    <div class="face-banner-card">
+      <div class="face-banner-left">
+        <img id="face-banner-avatar" class="face-banner-thumb" alt="Khuôn mặt đã chọn">
+        <div>
+          <div class="face-banner-title">Đang lọc theo khuôn mặt</div>
+          <div id="face-banner-count" class="face-banner-sub">Đang hiển thị các ảnh tìm thấy</div>
+        </div>
+      </div>
+      <div class="face-banner-controls">
+        <label class="threshold-control">
+          Độ nhạy:
+          <input type="range" id="face-threshold-slider" min="0.40" max="0.65" step="0.01" value="0.52">
+          <span id="face-threshold-val" class="tabular-nums">52%</span>
+        </label>
+        <button type="button" id="btn-clear-face-filter" class="btn btn-secondary btn-sm">Bỏ lọc khuôn mặt</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Màn hình duyệt ảnh chính (Justified Grid) -->
+  <main id="gallery-container" class="gallery-main">
+    <div id="gallery-grid" class="gallery-grid"></div>
+
+    <!-- Trạng thái trống / đang tải -->
+    <div id="state-loading" class="state-card hidden">
+      <div class="spinner"></div>
+      <h2 style="margin-top:16px;">Đang tải danh sách ảnh...</h2>
+      <p id="state-loading-msg">Vui lòng chờ trong giây lát.</p>
+    </div>
+
+    <div id="state-empty" class="state-card hidden">
+      <h2>Không tìm thấy ảnh nào</h2>
+      <p id="state-empty-msg">Thư mục hiện tại không có ảnh hoặc không khớp với bộ lọc.</p>
+      <button type="button" id="btn-reset-filters" class="btn btn-secondary btn-sm">Đặt lại bộ lọc</button>
+    </div>
+
+    <div id="state-error" class="state-card hidden">
+      <h2 style="color:var(--accent-heart);">Không thể tải album</h2>
+      <p id="state-error-msg">Vui lòng kiểm tra lại ID thư mục hoặc quyền chia sẻ.</p>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button type="button" id="btn-retry-load" class="btn btn-primary btn-sm">Thử lại</button>
+        <button type="button" class="btn btn-secondary btn-sm btn-open-quick-drive-trigger">📁 Dán link Drive khác</button>
+        <a href="#admin" class="btn btn-ghost btn-sm">Mở Quản trị (#admin)</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Thanh Điều Khiển Nổi Dưới Đáy (Floating Bottom Bar) -->
+  <aside id="floating-bar-wrap" class="floating-bar-wrap">
+    <div class="floating-bar">
+      <!-- Bộ đếm số ảnh -->
+      <div class="bar-status-row">
+        <div id="counter-pill" class="counter-pill">
+          <span class="dot-heart"></span>
+          <span>Đã chọn: <strong id="counter-selected" class="tabular-nums">0</strong> / <span id="counter-limit" class="tabular-nums">Không giới hạn</span></span>
+          <span id="counter-warning" class="over-limit-tag hidden"></span>
+        </div>
+      </div>
+
+      <!-- Bộ lọc trạng thái -->
+      <div class="bar-filters" role="tablist" aria-label="Lọc trạng thái ảnh">
+        <button type="button" class="filter-pill is-active" data-filter="all">Tất cả <span id="count-pill-all" class="pill-num">0</span></button>
+        <button type="button" class="filter-pill" data-filter="selected">Đã chọn ♥ <span id="count-pill-selected" class="pill-num">0</span></button>
+        <button type="button" class="filter-pill" data-filter="unselected">Chưa chọn <span id="count-pill-unselected" class="pill-num">0</span></button>
+        <button type="button" class="filter-pill" data-filter="priority">Ưu tiên ★ <span id="count-pill-priority" class="pill-num">0</span></button>
+        <button type="button" class="filter-pill" data-filter="hasNote">Có ghi chú <span id="count-pill-note" class="pill-num">0</span></button>
+      </div>
+
+      <!-- Nút hành động một tay -->
+      <div class="bar-actions">
+        <button type="button" id="btn-open-face-modal" class="btn btn-secondary" title="Tìm tất cả ảnh có mặt của người trong album">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 8v-2a2 2 0 0 1 2 -2h2"/><path d="M4 16v2a2 2 0 0 0 2 2h2"/>
+            <path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M16 20h2a2 2 0 0 0 2 -2v-2"/>
+            <path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/>
+          </svg>
+          <span>Lọc khuôn mặt</span>
+        </button>
+
+        <button type="button" id="btn-open-submit-modal" class="btn btn-primary" title="Xem lại danh sách và gửi đơn cho Studio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 14l11 -11"/><path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5"/>
+          </svg>
+          <span>Gửi danh sách</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Trình Xem Lớn (Lightbox Modal) -->
+  <div id="lightbox-modal" class="lightbox-modal hidden" role="dialog" aria-modal="true" aria-label="Trình xem ảnh lớn">
+    <div class="lightbox-top">
+      <div class="lightbox-file-info">
+        <span id="lb-index" class="lightbox-index">1 / 1</span>
+        <span id="lb-filename" class="lightbox-filename">DSC_0000.JPG</span>
+        <span id="lb-folder" class="lightbox-folder-tag">Album</span>
+      </div>
+      <div class="lightbox-top-actions">
+        <button type="button" id="lb-hd-btn" class="lb-icon-btn lb-hd-btn" title="Bấm để nạp ảnh gốc siêu nét (cảm biến đầy đủ)">HD Gốc</button>
+        <button type="button" id="lb-zoom-out" class="lb-icon-btn" title="Thu nhỏ (-)">–</button>
+        <button type="button" id="lb-zoom-reset" class="lb-icon-btn tabular-nums" style="width:auto;padding:0 8px;font-size:11px;" title="Tỷ lệ 100% (0)">100%</button>
+        <button type="button" id="lb-zoom-in" class="lb-icon-btn" title="Phóng to (+)">+</button>
+        <a id="lb-download" class="lb-icon-btn" target="_blank" rel="noopener noreferrer" title="Tải ảnh gốc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/>
+          </svg>
+        </a>
+        <button type="button" id="lb-close" class="lb-icon-btn" title="Đóng (Esc)">✕</button>
+      </div>
+    </div>
+
+    <!-- Sân khấu ảnh (Stage) có hỗ trợ vuốt chạm, phóng to chi tiết -->
+    <div id="lb-stage" class="lightbox-stage">
+      <button type="button" id="lb-prev" class="lb-nav-btn lb-nav-prev" title="Ảnh trước (Mũi tên trái)">‹</button>
+      <div id="lb-img-container" class="lightbox-img-container">
+        <img id="lb-img" class="lightbox-img" alt="Ảnh xem lớn">
+      </div>
+      <button type="button" id="lb-next" class="lb-nav-btn lb-nav-next" title="Ảnh sau (Mũi tên phải)">›</button>
+      <div id="lb-loader" class="lightbox-loader hidden">Đang tải nét cao...</div>
+    </div>
+
+    <!-- Dock thao tác nhanh có thể thu gọn dưới đáy Lightbox -->
+    <div class="lightbox-dock-wrap">
+      <button type="button" id="lb-collapse-toggle" class="lb-collapse-toggle">Thu gọn để xem toàn ảnh</button>
+      <div id="lb-dock" class="lightbox-dock">
+        <div class="lb-action-row">
+          <div class="lb-toggle-group">
+            <button type="button" id="lb-heart-btn" class="lb-pill-btn btn-heart">
+              <span>Chọn ảnh</span>
+            </button>
+            <button type="button" id="lb-star-btn" class="lb-pill-btn btn-star">
+              <span>Ưu tiên / In</span>
+            </button>
+          </div>
+          <button type="button" id="lb-face-btn" class="btn btn-secondary btn-sm" title="Tìm người trong ảnh này">
+            👤 Tìm người trong ảnh này
+          </button>
+        </div>
+
+        <div id="lb-quick-tags" class="quick-tags-row"></div>
+
+        <div class="lb-note-row">
+          <input type="text" id="lb-note-input" class="lb-note-input" placeholder="Nhập thêm ghi chú riêng (VD: bóp eo bên trái, xóa bóng đèn...)" aria-label="Ghi chú ảnh">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nhận Diện & Lọc Khuôn Mặt (@vladmandic/human) -->
+  <div id="face-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Lọc theo khuôn mặt">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Lọc ảnh theo khuôn mặt</h2>
+          <p id="face-modal-subtitle" class="modal-subtitle">Chạm vào một bức ảnh có mặt người bạn muốn tìm trong album</p>
+        </div>
+        <button type="button" id="face-modal-close" class="modal-close-btn" aria-label="Đóng modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Bước 0: Danh sách các khuôn mặt AI đã gom cụm tự động (People Album) -->
+        <div id="face-step-clusters" class="face-step-pane hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <span style="font-size:13px;color:var(--ink-secondary);">Chạm vào một người để xem toàn bộ ảnh của người đó:</span>
+            <div style="display:flex;gap:6px;">
+              <button type="button" id="face-btn-custom-sample" class="btn btn-ghost btn-sm" style="font-size:12px;">Chạm ảnh mẫu</button>
+              <button type="button" id="face-btn-rescan" class="btn btn-secondary btn-sm" style="font-size:12px;">🔄 Quét lại</button>
+            </div>
+          </div>
+          <div id="face-clusters-grid" class="face-clusters-grid"></div>
+        </div>
+
+        <!-- Bước 1: Chọn ảnh mẫu trong album -->
+        <div id="face-step-pick" class="face-step-pane">
+          <div id="face-picker-grid" class="face-picker-grid"></div>
+        </div>
+
+        <!-- Bước 2: Chọn khuôn mặt cụ thể trong ảnh mẫu -->
+        <div id="face-step-select" class="face-step-pane hidden">
+          <p style="font-size:13px;color:var(--ink-secondary);margin:0 0 10px;">
+            Ảnh mẫu có nhiều khuôn mặt. Vui lòng bấm vào ô vuông khuôn mặt người bạn muốn tìm:
+          </p>
+          <div class="face-stage-wrap">
+            <div id="face-canvas-box" class="face-canvas-box">
+              <img id="face-sample-img" alt="Ảnh mẫu">
+              <div id="face-boxes-overlay"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bước 3: Tiến trình quét AI -->
+        <div id="face-step-scan" class="face-step-pane hidden" style="text-align:center;padding:20px 0;">
+          <div class="spinner"></div>
+          <h3 id="face-scan-status-title" style="margin:14px 0 6px;">Đang nạp mô hình AI...</h3>
+          <p id="face-scan-status-desc" style="font-size:13px;color:var(--ink-muted);margin:0 0 16px;">
+            Chỉ nạp 1 lần (~5MB) và lưu cache IndexedDB để các lần sau tức thì.
+          </p>
+          <div class="progress-track">
+            <div id="face-scan-progress-fill" class="progress-fill" style="width:0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="face-btn-back" class="btn btn-secondary btn-sm hidden">Quay lại chọn ảnh</button>
+        <button type="button" id="face-btn-background" class="btn btn-primary btn-sm hidden">⚡ Ẩn bảng (Chạy ngầm)</button>
+        <button type="button" id="face-btn-cancel" class="btn btn-ghost btn-sm">Hủy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thanh Tiến Độ Nổi Khi Chạy Ngầm Quét Khuôn Mặt -->
+  <div id="face-floating-pill" class="face-floating-pill hidden">
+    <div class="face-pill-spinner"></div>
+    <div class="face-pill-info">
+      <span id="face-pill-text">Đang quét AI: 0 / 0</span>
+      <div class="face-pill-track"><div id="face-pill-fill" class="face-pill-fill"></div></div>
+    </div>
+    <button type="button" id="face-pill-open" class="face-pill-action">Mở lại</button>
+  </div>
+
+  <!-- Modal Báo Cáo, Gửi Đơn & Xuất File Hậu Kỳ Cho Studio -->
+  <div id="submit-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Gửi danh sách chọn ảnh">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Gửi Danh Sách Chọn Ảnh</h2>
+          <p class="modal-subtitle">Kiểm tra lại lựa chọn trước khi chuyển dữ liệu cho bộ phận hậu kỳ</p>
+        </div>
+        <button type="button" id="submit-modal-close" class="modal-close-btn" aria-label="Đóng modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Thông báo gửi thành công (nếu đã gửi) -->
+        <div id="submit-success-banner" class="success-banner hidden">
+          <div class="success-icon">✓</div>
+          <h3 style="margin:0 0 4px;font-size:17px;color:var(--accent-success);">Gửi danh sách thành công!</h3>
+          <p style="margin:0;font-size:13px;color:var(--ink-secondary);">
+            Thông tin đã được chuyển tới Studio. Bạn có thể tải tệp báo cáo lưu về máy hoặc sao chép chuỗi file bên dưới.
+          </p>
+        </div>
+
+        <!-- KPI Thống kê -->
+        <div class="summary-kpi-grid">
+          <div class="kpi-box kpi-heart">
+            <div class="kpi-label">Đã chọn cơ bản</div>
+            <div id="kpi-selected-val" class="kpi-value">0</div>
+          </div>
+          <div class="kpi-box kpi-star">
+            <div class="kpi-label">Ảnh ưu tiên / In ấn (★)</div>
+            <div id="kpi-priority-val" class="kpi-value">0</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Định mức gói</div>
+            <div id="kpi-limit-val" class="kpi-value">Không giới hạn</div>
+          </div>
+          <div id="kpi-extra-box" class="kpi-box kpi-extra hidden">
+            <div class="kpi-label">Ảnh phát sinh ngoài gói</div>
+            <div id="kpi-extra-val" class="kpi-value">+0</div>
+          </div>
+        </div>
+
+        <!-- Chuỗi tên file cho Capture One / Lightroom -->
+        <div class="export-box">
+          <div class="export-box-head">
+            <strong style="font-size:13px;">Chuỗi tên file cho Capture One / Lightroom:</strong>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <label style="font-size:12px;color:var(--ink-secondary);display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="checkbox" id="export-toggle-ext"> Có đuôi .jpg
+              </label>
+              <button type="button" id="btn-copy-c1-string" class="btn btn-secondary btn-sm">Sao chép</button>
+            </div>
+          </div>
+          <textarea id="export-c1-textarea" class="export-code" readonly placeholder="Chưa chọn ảnh nào..."></textarea>
+          <span style="font-size:11.5px;color:var(--ink-muted);margin-top:4px;display:block;">
+            💡 Studio chỉ cần copy chuỗi này và dán vào <strong>Select by Filename List</strong> trên Capture One để chọn ngay các file RAW cần sửa.
+          </span>
+        </div>
+
+        <!-- Danh sách chi tiết từng ảnh -->
+        <div>
+          <strong style="font-size:13px;display:block;margin-bottom:8px;">Chi tiết từng ảnh & ghi chú:</strong>
+          <div id="order-details-list" class="detail-list"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="btn-download-report-txt" class="btn btn-secondary btn-sm">Tải báo cáo (.txt)</button>
+        <button type="button" id="btn-confirm-send-order" class="btn btn-primary">Xác nhận gửi đơn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dán Link Google Drive Nhanh -->
+  <div id="quick-drive-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Mở thư mục Google Drive">
+    <div class="modal-card" style="max-width:540px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Dán Link Thư Mục Google Drive</h2>
+          <p class="modal-subtitle">Hệ thống sẽ tự nhận diện FOLDER_ID và tải album ảnh</p>
+        </div>
+        <button type="button" id="quick-drive-close" class="modal-close-btn" aria-label="Đóng modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="quick-drive-input">
+            <span>Đường link hoặc ID thư mục Drive:</span>
+            <span id="quick-folder-badge" class="extracted-badge is-ok hidden"></span>
+          </label>
+          <input type="text" id="quick-drive-input" class="form-input" placeholder="https://drive.google.com/drive/folders/1a2B3c..." required autofocus>
+          <span style="font-size:11.5px;color:var(--ink-muted);margin-top:4px;display:block;">
+            💡 Thư mục Google Drive cần được chia sẻ ở chế độ: <strong>"Bất kỳ ai có đường liên kết đều có thể xem" (Viewer)</strong>.
+          </span>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="quick-client-name">Tên khách hàng (tùy chọn):</label>
+            <input type="text" id="quick-client-name" class="form-input" placeholder="VD: Anh Nam & Chị Linh">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="quick-package-name">Tên gói (tùy chọn):</label>
+            <input type="text" id="quick-package-name" class="form-input" placeholder="VD: Cuoi_Tron_Goi">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="quick-limit-input">Định mức ảnh gói (limit):</label>
+          <input type="number" id="quick-limit-input" class="form-input" placeholder="30 (để trống hoặc 0 = không giới hạn)" min="0">
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content:space-between;">
+        <a href="#admin" id="quick-to-admin-link" class="btn btn-ghost btn-sm" style="font-size:12px;">
+          ⚙️ Mở Trình tạo link chi tiết & tin nhắn Zalo (#admin)
+        </a>
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="quick-drive-cancel" class="btn btn-secondary btn-sm">Hủy</button>
+          <button type="button" id="quick-drive-submit" class="btn btn-primary btn-sm">Mở Album Ảnh</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Đồng Bộ & Chia Sẻ Ảnh Đã Chọn Đa Thiết Bị -->
+  <div id="sync-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Đồng bộ đa thiết bị">
+    <div class="modal-card" style="max-width:540px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">☁️ Đồng Bộ & Chia Sẻ Đa Thiết Bị</h2>
+          <p class="modal-subtitle">Xem cùng lúc trên điện thoại, máy tính, iPad không lo mất dữ liệu</p>
+        </div>
+        <button type="button" id="sync-modal-close" class="modal-close" aria-label="Đóng">✕</button>
+      </div>
+
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;padding:16px 20px;">
+        <!-- Tùy chọn 1: Đồng bộ đám mây tự động -->
+        <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;">
+            <span>1. Đồng bộ đám mây (Google Apps Script)</span>
+            <span id="sync-modal-badge" style="font-size:11px;padding:2px 8px;background:var(--accent-success-soft);color:var(--accent-success);border-radius:12px;font-weight:600;">Đang kết nối</span>
+          </div>
+          <p style="font-size:12px;color:var(--ink-secondary);margin:0 0 10px;line-height:1.5;">
+            Tự động lưu và tải dữ liệu chọn ảnh giữa mọi máy mở cùng album.
+          </p>
+          <button type="button" id="sync-modal-btn-now" class="btn btn-primary btn-sm" style="width:100%;">
+            🔄 Đồng bộ ngay với đám mây
+          </button>
+        </div>
+
+        <!-- Tùy chọn 2: Sao chép link kèm ảnh đã chọn -->
+        <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">
+            2. Chia sẻ link kèm ảnh đã chọn (Dùng ngay không cần cài đặt)
+          </div>
+          <p style="font-size:12px;color:var(--ink-secondary);margin:0 0 10px;line-height:1.5;">
+            Tạo một đường link có chứa sẵn tất cả ảnh bạn đã chọn trên máy này. Gửi qua Zalo sang máy tính mở lên là có đầy đủ 100%!
+          </p>
+          <button type="button" id="sync-modal-btn-copy-link" class="btn btn-secondary btn-sm" style="width:100%;">
+            📋 Sao chép link kèm ảnh đã chọn
+          </button>
+        </div>
+
+        <!-- Tùy chọn 3: Nhập nhanh danh sách tên file -->
+        <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">
+            3. Dán danh sách tên file (Nhập nhanh)
+          </div>
+          <p style="font-size:12px;color:var(--ink-secondary);margin:0 0 8px;line-height:1.5;">
+            Dán danh sách tên file từ Zalo hoặc Capture One để chọn hàng loạt:
+          </p>
+          <textarea id="sync-modal-import-text" rows="2" class="form-input" placeholder="VD: DIP_4879, DIP_4880, DIP_4877..." style="width:100%;font-size:12px;font-family:monospace;padding:8px;border-radius:6px;resize:vertical;box-sizing:border-box;"></textarea>
+          <button type="button" id="sync-modal-btn-import" class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;">
+            ✓ Đánh dấu đã chọn các ảnh này
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Giao Diện Quản Trị Studio Tạo Link Nhanh (#admin) -->
+  <section id="admin-view" class="admin-view hidden" aria-label="Trình tạo link nhanh cho Studio">
+    <!-- Màn hình Đăng Nhập Quản Trị Studio -->
+    <div id="admin-login-card" class="state-card" style="max-width:420px;margin:40px auto;">
+      <div class="brand-mark" style="margin:0 auto 12px;width:44px;height:44px;font-size:15px;font-weight:800;">DIP</div>
+      <h2 style="margin:0 0 4px;font-size:20px;">Đăng Nhập Quản Trị Studio</h2>
+      <p style="font-size:13px;color:var(--ink-secondary);margin:0 0 18px;">
+        Dành cho chủ Studio quản lý link gửi khách hàng
+      </p>
+      <form id="admin-login-form" style="display:flex;flex-direction:column;gap:12px;text-align:left;">
+        <div class="form-group">
+          <label class="form-label" for="login-password">Mã PIN / Mật khẩu Quản trị:</label>
+          <input type="password" id="login-password" class="form-input" placeholder="Nhập mã PIN Studio..." autocomplete="current-password" autofocus required>
+          <span style="font-size:11.5px;color:var(--ink-muted);margin-top:2px;display:block;">Mã PIN mặc định: <strong>123</strong> (bạn có thể đổi mật khẩu sau khi vào).</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="login-remember-me" checked style="cursor:pointer;width:15px;height:15px;">
+          <label for="login-remember-me" style="font-size:12.5px;color:var(--ink-secondary);cursor:pointer;">Ghi nhớ đăng nhập trên máy này (lần sau tự động vào thẳng)</label>
+        </div>
+        <div id="login-error-msg" class="extracted-badge is-err hidden" style="text-align:center;padding:6px;">Mã PIN hoặc mật khẩu không chính xác!</div>
+        <button type="submit" class="btn btn-primary" style="margin-top:6px;width:100%;">Mở Bảng Quản Trị Studio</button>
+      </form>
+      <button type="button" id="btn-quick-admin-login" class="btn btn-secondary" style="width:100%;margin-top:10px;">
+        ⚡ Mở nhanh quyền Studio (1-Chạm máy cá nhân)
+      </button>
+      <div style="margin-top:16px;">
+        <a href="#" class="btn btn-ghost btn-sm" style="font-size:12px;">← Quay lại trang chọn ảnh</a>
+      </div>
+    </div>
+
+    <!-- Nội dung Quản trị sau khi đăng nhập thành công -->
+    <div id="admin-panel-content" class="hidden">
+      <div class="admin-header">
+        <div>
+          <h2 style="margin:0;font-size:22px;letter-spacing:-0.02em;">Trình Tạo Link & Quản Lý Album</h2>
+          <p style="margin:4px 0 0;font-size:13.5px;color:var(--ink-secondary);">
+            Tạo và chỉnh sửa link chọn ảnh gửi khách hàng qua Zalo/Messenger
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" id="admin-btn-change-pass" class="btn btn-ghost btn-sm" title="Đổi mã PIN / Mật khẩu">🔑 Đổi mật khẩu</button>
+          <a href="#" id="admin-btn-back-to-gallery" class="btn btn-secondary btn-sm">← Xem album ảnh</a>
+          <button type="button" id="admin-btn-logout" class="btn btn-ghost btn-sm" title="Đăng xuất quản trị">Đăng xuất</button>
+        </div>
+      </div>
+
+    <div class="admin-grid">
+      <!-- Biểu mẫu nhập liệu -->
+      <div class="panel-card">
+        <!-- Banner thông báo khi đang trong chế độ Chỉnh sửa link có sẵn -->
+        <div id="admin-editing-banner" class="editing-banner hidden">
+          <span>✏️ Đang chỉnh sửa link: <strong id="admin-editing-name">Khách</strong></span>
+          <button type="button" id="admin-btn-cancel-edit" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;">✕ Hủy / Tạo mới</button>
+        </div>
+
+        <h3 id="admin-form-title">1. Thông tin hợp đồng & Drive</h3>
+
+        <div class="form-group">
+          <label class="form-label" for="admin-drive-url">
+            <span>Link hoặc ID thư mục Google Drive:</span>
+            <span id="admin-folder-id-badge" class="extracted-badge is-ok hidden"></span>
+          </label>
+          <input type="text" id="admin-drive-url" class="form-input" placeholder="https://drive.google.com/drive/folders/1a2B3c..." required>
+          <span style="font-size:11.5px;color:var(--ink-muted);">Dán link thư mục Google Drive chứa ảnh gốc của khách.</span>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="admin-client-name">Tên khách hàng / Mã HĐ:</label>
+            <input type="text" id="admin-client-name" class="form-input" placeholder="VD: Anh Nam & Chị Linh">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="admin-package-name">Tên gói chụp:</label>
+            <input type="text" id="admin-package-name" class="form-input" placeholder="VD: Cuoi_Tron_Goi">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="admin-short-slug">
+            <span>Mã định danh ngắn (dùng tạo link theo tên khách):</span>
+          </label>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;color:var(--ink-muted);font-family:monospace;">?k=</span>
+            <input type="text" id="admin-short-slug" class="form-input" placeholder="VD: namlinh hoặc doicuoi2111" style="font-family:monospace;">
+          </div>
+          <span style="font-size:11.5px;color:var(--ink-muted);">Hệ thống tự động điền theo tên khách hoặc bạn có thể tự chỉnh sửa.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Gợi ý gói chụp nhanh:</label>
+          <div id="admin-preset-chips" class="preset-chips"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="admin-limit">Số ảnh tiêu chuẩn (limit):</label>
+          <input type="number" id="admin-limit" class="form-input" placeholder="30 (để trống hoặc 0 = không giới hạn)" min="0">
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <strong style="font-size:13px;display:block;">Cho phép tải ảnh gốc (download):</strong>
+            <span style="font-size:11.5px;color:var(--ink-muted);">Tắt khi chỉ gửi ảnh thô có watermark chọn lọc; Bật khi bàn giao.</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="admin-download-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <button type="button" id="admin-btn-generate" class="btn btn-primary" style="width:100%;margin-top:6px;">
+          Tạo Link & Lời Nhắn Mẫu
+        </button>
+      </div>
+
+      <!-- Kết quả sinh link & Lịch sử -->
+      <div style="display:flex;flex-direction:column;gap:18px;">
+        <div id="admin-result-wrap" class="panel-card hidden">
+          <h3 style="color:var(--accent-success);">2. Link & Lời nhắn Zalo hoàn chỉnh</h3>
+
+          <!-- Link ngắn gọn theo tên khách -->
+          <div class="form-group">
+            <label class="form-label" for="admin-result-short-url">
+              <span style="color:var(--accent-success);font-weight:700;">⭐ Link ngắn gọn theo tên khách (Dễ nhớ, khuyên dùng):</span>
+            </label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="admin-result-short-url" class="form-input" style="font-weight:600;color:var(--ink-primary);background:#F0FDF4;" readonly>
+              <button type="button" id="admin-btn-copy-short-url" class="btn btn-success btn-sm" style="flex-shrink:0;">Sao chép</button>
+            </div>
+          </div>
+
+          <!-- Link đầy đủ -->
+          <div class="form-group">
+            <label class="form-label" for="admin-result-url">Đường link đầy đủ:</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="admin-result-url" class="form-input" readonly>
+              <button type="button" id="admin-btn-copy-url" class="btn btn-secondary btn-sm" style="flex-shrink:0;">Sao chép</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="admin-result-msg">Lời nhắn mẫu kèm hướng dẫn gửi Zalo/Messenger:</label>
+            <textarea id="admin-result-msg" class="form-textarea" rows="6" readonly></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button type="button" id="admin-btn-copy-msg" class="btn btn-success btn-sm" style="flex:1;">Sao chép lời nhắn</button>
+              <button type="button" id="admin-btn-open-link" class="btn btn-secondary btn-sm">Mở thử link</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <h3 style="margin:0;">Quản lý Link Đã Tạo (<span id="admin-history-count" class="tabular-nums">0</span>)</h3>
+            <input type="text" id="admin-history-search" class="form-input" style="width:160px;padding:5px 10px;font-size:12px;" placeholder="Tìm theo tên khách...">
+          </div>
+          <div id="admin-history-list" class="history-list"></div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- Script Trợ Thủ Mở Nhanh Link Drive (Hoạt động tức thì không bị phụ thuộc cache trình duyệt) -->
+  <script>
+    (function() {
+      function extractId(input) {
+        if (!input) return '';
+        var t = input.trim();
+        var m1 = t.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
+        if (m1) return m1[1];
+        var m2 = t.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+        if (m2) return m2[1];
+        if (/^[a-zA-Z0-9_-]{10,120}$/.test(t)) return t;
+        return '';
+      }
+
+      function openDriveFolder(rawUrl) {
+        var id = extractId(rawUrl);
+        if (!id) {
+          alert('Vui lòng dán link Google Drive hoặc nhập ID thư mục hợp lệ!');
+          return;
+        }
+        var p = new URLSearchParams(window.location.search);
+        p.set('folder', id);
+        window.location.search = p.toString();
+      }
+
+      function setupQuickBar() {
+        var barInput = document.getElementById('bar-drive-url');
+        var barBtn = document.getElementById('bar-btn-open');
+        var barMore = document.getElementById('bar-btn-more');
+        var btnTop = document.getElementById('btn-quick-open-drive');
+        var modal = document.getElementById('quick-drive-modal');
+
+        function toggleModal(show) {
+          if (!modal) return;
+          if (show) {
+            modal.classList.remove('hidden');
+            var qIn = document.getElementById('quick-drive-input');
+            if (qIn) {
+              if (barInput && barInput.value) qIn.value = barInput.value;
+              setTimeout(function() { qIn.focus(); }, 60);
+            }
+          } else {
+            modal.classList.add('hidden');
+          }
+        }
+
+        if (barBtn && barInput) {
+          barBtn.onclick = function() { openDriveFolder(barInput.value); };
+          barInput.onkeydown = function(e) {
+            if (e.key === 'Enter') openDriveFolder(barInput.value);
+          };
+        }
+
+        if (barMore) {
+          barMore.onclick = function() { toggleModal(true); };
+        }
+
+        if (btnTop) {
+          btnTop.onclick = function() { toggleModal(true); };
+        }
+
+        var btnCancel = document.getElementById('quick-drive-cancel');
+        var btnClose = document.getElementById('quick-drive-close');
+        if (btnCancel) btnCancel.onclick = function() { toggleModal(false); };
+        if (btnClose) btnClose.onclick = function() { toggleModal(false); };
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupQuickBar);
+      } else {
+        setupQuickBar();
+      }
+    })();
+  </script>
+
+  <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
+  <script type="module" src="js/app.js?v=7.3"></script>
+</body>
+</html>
