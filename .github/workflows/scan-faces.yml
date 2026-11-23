@@ -1,0 +1,64 @@
+name: AI Face Recognition Scanner (InsightFace)
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder_id_or_slug:
+        description: 'Mã định danh (Slug) hoặc Folder ID Google Drive (VD: viet-phuc)'
+        required: true
+        default: 'viet-phuc'
+      similarity_threshold:
+        description: 'Ngưỡng gom mặt Cosine (0.45 - 0.55, mặc định 0.50)'
+        required: false
+        default: '0.50'
+      min_photos:
+        description: 'Số ảnh tối thiểu để tính 1 người'
+        required: false
+        default: '2'
+
+permissions:
+  contents: write
+
+jobs:
+  scan-faces:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Cache InsightFace Models
+        uses: actions/cache@v4
+        with:
+          path: ~/.insightface
+          key: insightface-models-buffalo_l-v1
+
+      - name: Install AI Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy onnxruntime opencv-python-headless scikit-learn requests tqdm insightface
+
+      - name: Run Face Scanning Script
+        run: |
+          python scripts/scan_faces.py \
+            --target "${{ github.event.inputs.folder_id_or_slug }}" \
+            --threshold "${{ github.event.inputs.similarity_threshold }}" \
+            --min-photos "${{ github.event.inputs.min_photos }}"
+
+      - name: Commit and Push Face Clusters
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "AI Face Scanner Bot"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "Không có thay đổi mới để commit."
+          else
+            git commit -m "chore(ai): update face clusters for ${{ github.event.inputs.folder_id_or_slug }} [skip ci]"
+            git push origin main
+          fi

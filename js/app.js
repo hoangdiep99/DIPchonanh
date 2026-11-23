@@ -1167,7 +1167,42 @@ class AppController {
     }
   }
 
-  loadCachedClusters() {
+  async loadCachedClusters() {
+    const slug = this.slug || this.initialKeyParam;
+    const folderId = this.folderId;
+    let loadedFromGitHub = false;
+
+    // 1. Thử tải dữ liệu phân loại AI InsightFace có sẵn từ GitHub (nếu Studio đã quét trước)
+    const jsonPaths = [];
+    if (slug) jsonPaths.push(`data/faces_${slug}.json`);
+    if (folderId) jsonPaths.push(`data/faces_${folderId}.json`);
+
+    for (const path of jsonPaths) {
+      try {
+        const res = await fetch(`${path}?t=${Date.now()}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json && Array.isArray(json.clusters) && json.clusters.length > 0) {
+            this.faceClusters = json.clusters.map((item) => ({
+              ...item,
+              photoIds: new Set(item.photoIds || []),
+            }));
+            this.saveCachedClusters();
+            this.renderPeopleBar();
+            this.peopleBar?.classList.remove('hidden');
+            console.log(`✨ Đã nạp ${this.faceClusters.length} nhóm khuôn mặt AI InsightFace chuẩn xác từ GitHub:`, path);
+            loadedFromGitHub = true;
+            break;
+          }
+        }
+      } catch (e) {
+        // file chưa có trên GitHub
+      }
+    }
+
+    if (loadedFromGitHub) return;
+
+    // 2. Dự phòng: Đọc từ bộ nhớ máy khách (LocalStorage)
     try {
       const key = `studio_clusters_${this.folderId || 'demo'}`;
       const raw = localStorage.getItem(key);
