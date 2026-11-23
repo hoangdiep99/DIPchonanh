@@ -8,8 +8,8 @@
  *    3. Quét tuần tự theo lô (batchSize=6 ảnh thumbnail w400) để chống lag UI.
  *    4. Tính Cosine Similarity / human.match.similarity, lọc ảnh khớp và lưu cache IndexedDB.
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.5';
-import { StorageManager } from './storage.js?v=8.5';
+import { STUDIO_CONFIG } from '../config.js?v=9.6';
+import { StorageManager } from './storage.js?v=9.6';
 
 export class FaceFilterEngine {
   constructor() {
@@ -216,7 +216,7 @@ export class FaceFilterEngine {
     }
 
     // 2. Quét các ảnh chưa cache theo từng lô
-    let scanned = photos.length - pendingPhotos.length;
+    scanned = photos.length - pendingPhotos.length;
     for (let i = 0; i < pendingPhotos.length; i += batchSize) {
       const batch = pendingPhotos.slice(i, i + batchSize);
       onProgress?.({
