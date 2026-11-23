@@ -378,10 +378,6 @@ export class AdminManager {
       ``,
       `Cần hỗ trợ anh/chị liên hệ hotline: ${STUDIO_CONFIG.studioHotline} nha. Em cảm ơn anh/chị! ❤️`,
     ].join('\n');
-      `• Chọn xong, anh/chị bấm "Gửi danh sách" ở thanh dưới cùng nhé!`,
-      ``,
-      `Cần hỗ trợ anh/chị liên hệ hotline: ${STUDIO_CONFIG.studioHotline} nha. Em cảm ơn anh/chị! ❤️`,
-    ].join('\n');
 
     if (this.resultShortUrl) this.resultShortUrl.value = shortUrl;
     if (this.resultUrl) this.resultUrl.value = fullUrl;
