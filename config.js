@@ -19,8 +19,8 @@ export const STUDIO_CONFIG = {
   // Tài khoản đăng nhập trang Quản trị Studio (#admin)
   // Studio có thể đổi mật khẩu tại đây
   adminAuth: {
-    username: 'admin',
-    password: '123',
+    username: 'hoangdiep',
+    password: 'diep2026',
   },
 
   // (Tùy chọn) Gửi thẳng thông báo về Telegram Bot từ trình duyệt.

@@ -137,11 +137,11 @@ export class AdminManager {
 
   handleLogin() {
     const p = this.passwordInput?.value ? this.passwordInput.value.trim() : '';
-    const u = this.usernameInput?.value ? this.usernameInput.value.trim().toLowerCase() : 'admin';
+    const u = this.usernameInput?.value ? this.usernameInput.value.trim().toLowerCase() : 'hoangdiep';
 
-    const validUser = (STUDIO_CONFIG.adminAuth?.username || 'admin').toLowerCase();
+    const validUser = (STUDIO_CONFIG.adminAuth?.username || 'hoangdiep').toLowerCase();
     const customPass = localStorage.getItem(ADMIN_CUSTOM_PASS_KEY);
-    const validPass = customPass || STUDIO_CONFIG.adminAuth?.password || '123';
+    const validPass = customPass || STUDIO_CONFIG.adminAuth?.password || 'diep2026';
 
     // Đăng nhập thành công nếu đúng mã PIN (dù có nhập username hay không)
     if (p === validPass && (u === validUser || !this.usernameInput)) {
@@ -163,7 +163,7 @@ export class AdminManager {
   }
 
   handleChangePassword() {
-    const currentPass = localStorage.getItem(ADMIN_CUSTOM_PASS_KEY) || STUDIO_CONFIG.adminAuth?.password || '123';
+    const currentPass = localStorage.getItem(ADMIN_CUSTOM_PASS_KEY) || STUDIO_CONFIG.adminAuth?.password || 'diep2026';
     const oldInput = prompt('Nhập mật khẩu hiện tại của bạn:', '');
     if (oldInput === null) return;
     if (oldInput !== currentPass) {
