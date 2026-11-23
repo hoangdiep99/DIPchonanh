@@ -56,6 +56,8 @@ class AppController {
       this.initFaceModal();
       this.initSubmitModal();
       this.initSyncModal();
+      this.initPhotoContextMenu();
+      this.initSelfieCapture();
 
       window.addEventListener('hashchange', () => this.handleRoute());
       this.handleRoute();
@@ -198,41 +200,11 @@ class AppController {
     if (this.headerLimitCount) this.headerLimitCount.textContent = this.limit > 0 ? `${this.limit} ảnh` : 'Không giới hạn';
     if (this.counterLimit) this.counterLimit.textContent = this.limit > 0 ? `${this.limit}` : '∞';
 
-    // Bấm vào chỗ số lượng ảnh để chỉnh sửa định mức ảnh (CHỈ ADMIN MỚI ĐƯỢC PHÉP SỬA)
-    const headerLimitPill = document.getElementById('header-limit-pill');
-    this.headerLimitPill = headerLimitPill;
-    this.headerLimitEditIcon = document.getElementById('header-limit-edit-icon');
+    // Thông tin định mức ảnh (chỉ hiển thị số lượng ảnh ngoài giao diện, không cho sửa)
+    this.headerLimitPill = document.getElementById('header-limit-pill');
     this.adminNavBtn = document.getElementById('btn-to-admin');
     this.adminNavIcon = document.getElementById('admin-nav-icon');
     this.adminNavText = document.getElementById('admin-nav-text');
-
-    headerLimitPill?.addEventListener('click', () => {
-      const isAuth = Boolean(this.adminManager?.isLoggedIn());
-      if (!isAuth) {
-        if (confirm('Chỉ Quản trị viên Studio mới có quyền cài đặt định mức số lượng ảnh chọn của album này. Bạn có muốn chuyển sang trang Đăng nhập Quản trị không?')) {
-          window.location.hash = '#admin';
-        }
-        return;
-      }
-      const currentVal = this.limit > 0 ? this.limit : '';
-      const input = prompt('Nhập số lượng ảnh khách cần chọn (Ví dụ: 30, hoặc để trống = Không giới hạn):', currentVal);
-      if (input !== null) {
-        const parsed = parseInt(input.trim(), 10);
-        this.limit = (!isNaN(parsed) && parsed > 0) ? parsed : 0;
-        if (this.headerLimitCount) this.headerLimitCount.textContent = this.limit > 0 ? `${this.limit} ảnh` : 'Không giới hạn';
-        if (this.counterLimit) this.counterLimit.textContent = this.limit > 0 ? `${this.limit}` : '∞';
-        this.updateCounters();
-
-        const url = new URL(window.location.href);
-        if (this.limit > 0) {
-          url.searchParams.set('limit', this.limit);
-        } else {
-          url.searchParams.delete('limit');
-        }
-        window.history.replaceState({}, '', url.toString());
-        this.showToast(`✨ Đã đặt số lượng ảnh cần chọn: ${this.limit > 0 ? this.limit + ' ảnh' : 'Không giới hạn'}`);
-      }
-    });
 
     // Tiện ích: Chạm 3 lần nhanh vào Logo DIP trên Header để mở nhanh Quản Trị (#admin)
     const brandMark = document.querySelector('.brand-mark');
@@ -280,17 +252,6 @@ class AppController {
 
     this.btnRetryLoad.addEventListener('click', () => this.loadAlbumData());
 
-    this.selectedToolbar = document.getElementById('selected-toolbar');
-    this.selectedToolbarCount = document.getElementById('selected-toolbar-count');
-    this.btnToggleQuickDeselect = document.getElementById('btn-toggle-quick-deselect');
-    this.quickToggleLabel = document.getElementById('quick-toggle-label');
-    this.btnDeselectAll = document.getElementById('btn-deselect-all');
-    this.barBtnQuickMode = document.getElementById('bar-btn-quick-mode');
-
-    this.btnToggleQuickDeselect?.addEventListener('click', () => this.toggleQuickMode());
-    this.barBtnQuickMode?.addEventListener('click', () => this.toggleQuickMode());
-    this.btnDeselectAll?.addEventListener('click', () => this.deselectAllPhotos());
-
     // Filter pills
     const pills = document.querySelectorAll('.filter-pill');
     pills.forEach((p) => {
@@ -298,7 +259,6 @@ class AppController {
         this.currentFilter = p.dataset.filter;
         this.updateActiveFilterPill();
         this.applyFilters();
-        this.updateSelectedToolbar();
       });
     });
 
@@ -320,10 +280,11 @@ class AppController {
       getSelection: (id) => this.getPhotoSelection(id),
       getFaceScore: (id) => this.faceScoresMap.get(id),
       getCurrentFilter: () => this.currentFilter,
-      isQuickToggleMode: () => this.quickToggleMode,
       onToggleHeart: (id) => this.toggleHeart(id),
       onToggleStar: (id) => this.toggleStar(id),
       onOpenLightbox: (index, focusNote) => this.openLightboxAt(index, focusNote),
+      onDownloadPhoto: (photo) => this.downloadSinglePhoto(photo),
+      onPhotoLongPress: (photo, index) => this.openPhotoContextMenu(photo, index),
     });
   }
 
@@ -736,7 +697,10 @@ class AppController {
       this.btnCloudSync.classList.add('is-error');
       if (this.syncStatusText) this.syncStatusText.textContent = text || 'Lỗi đồng bộ';
     } else {
-      if (this.syncStatusText) this.syncStatusText.textContent = text || 'Đã đồng bộ';
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      if (this.syncStatusText) this.syncStatusText.textContent = text || `Đã đồng bộ ${timeStr}`;
+      this.btnCloudSync.title = `Đã đồng bộ đám mây lúc ${timeStr}. Bấm để đồng bộ ngay.`;
     }
   }
 
@@ -961,6 +925,8 @@ class AppController {
         onToggleTag: (id, tag) => this.toggleTag(id, tag),
         onUpdateNote: (id, text) => this.updateNote(id, text),
         onFindFaceFromPhoto: (photo) => this.startFaceDetectionWithSample(photo),
+        onDownloadPhoto: (photo) => this.downloadSinglePhoto(photo),
+        showToast: (msg, type) => this.showToast(msg, type),
       },
     });
   }
@@ -1437,6 +1403,18 @@ class AppController {
       const payload = this.buildCurrentOrderPayload();
       ExportService.downloadReportFile(payload);
     });
+
+    document.getElementById('btn-download-selected-zip')?.addEventListener('click', () => {
+      this.downloadSelectedZip();
+    });
+
+    document.getElementById('btn-download-all-zip')?.addEventListener('click', () => {
+      this.downloadAllZip();
+    });
+
+    document.getElementById('bar-btn-download-menu')?.addEventListener('click', () => {
+      this.openSubmitModal();
+    });
   }
 
   buildCurrentOrderPayload() {
@@ -1718,6 +1696,284 @@ class AppController {
       });
     } else {
       prompt('Sao chép liên kết này gửi sang máy tính:', url.toString());
+    }
+  }
+
+  // --- Tải Ảnh Trực Tiếp & Nén File ZIP ---
+  async downloadSinglePhoto(photo) {
+    if (!photo) return;
+    this.showToast(`Đang tải ảnh ${photo.name}...`, 'info');
+    const directUrl = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
+
+    try {
+      const res = await fetch(directUrl);
+      if (!res.ok) throw new Error('Fetch status ' + res.status);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = photo.name || `${photo.id}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }, 2000);
+      this.showToast(`✅ Đã tải ${photo.name} về máy!`, 'success');
+    } catch (err) {
+      console.warn('Lỗi tải trực tiếp blob, mở ảnh gốc:', err);
+      const w = window.open(directUrl, '_blank');
+      if (w) {
+        this.showToast(`Đã mở ảnh gốc, bạn nhấn giữ ảnh để "Lưu vào Ảnh" nhé!`, 'info');
+      } else {
+        window.location.href = directUrl;
+      }
+    }
+  }
+
+  async downloadSelectedZip() {
+    const selectedPhotos = this.allPhotos.filter((p) => this.getPhotoSelection(p.id).selected);
+    if (selectedPhotos.length === 0) {
+      alert('Bạn chưa chọn bức ảnh nào để tải!');
+      return;
+    }
+    await this.createAndDownloadZip(selectedPhotos, `ChonAnh_${(this.clientName || 'Khach').replace(/\s+/g, '_')}`);
+  }
+
+  async downloadAllZip() {
+    if (!this.allPhotos || this.allPhotos.length === 0) {
+      alert('Không có ảnh nào trong album để tải!');
+      return;
+    }
+    if (!confirm(`Bạn có muốn tải toàn bộ ${this.allPhotos.length} ảnh của album này về máy (.ZIP)?`)) return;
+    await this.createAndDownloadZip(this.allPhotos, `Album_${(this.clientName || 'Studio').replace(/\s+/g, '_')}`);
+  }
+
+  async createAndDownloadZip(photoList, zipFilename) {
+    if (typeof window.JSZip !== 'function') {
+      alert('Đang nạp bộ nén file, vui lòng thử lại sau giây lát!');
+      return;
+    }
+    const zip = new window.JSZip();
+    this.showToast(`Bắt đầu tải ${photoList.length} ảnh...`, 'info');
+
+    let loadedCount = 0;
+    const batchSize = 4;
+
+    for (let i = 0; i < photoList.length; i += batchSize) {
+      const batch = photoList.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (photo) => {
+          try {
+            const url = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Fetch failed');
+            const blob = await res.blob();
+            zip.file(photo.name, blob);
+          } catch (e) {
+            console.warn(`Không thể tải ${photo.name} vào ZIP:`, e);
+          } finally {
+            loadedCount++;
+            this.showToast(`Đang tải ảnh: ${loadedCount}/${photoList.length}...`, 'info');
+          }
+        })
+      );
+    }
+
+    this.showToast('Đang nén file .ZIP, vui lòng đợi trong giây lát...', 'info');
+    try {
+      const zipBlob = await zip.generateAsync({ type: 'blob' }, (metadata) => {
+        if (metadata.percent) {
+          this.showToast(`Đang đóng gói ZIP: ${Math.round(metadata.percent)}%...`, 'info');
+        }
+      });
+      const blobUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${zipFilename}_${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }, 3000);
+      this.showToast(`✅ Đã tải file nén ZIP thành công!`, 'success');
+    } catch (err) {
+      alert('Lỗi tạo file nén ZIP: ' + err.message);
+    }
+  }
+
+  // --- Menu Ngữ Cảnh Khi Ấn Giữ Ảnh (Long-press) ---
+  initPhotoContextMenu() {
+    this.contextMenu = document.getElementById('photo-context-menu');
+    this.ctxThumb = document.getElementById('ctx-photo-thumb');
+    this.ctxName = document.getElementById('ctx-photo-name');
+    this.ctxMeta = document.getElementById('ctx-photo-meta');
+    this.ctxBtnClose = document.getElementById('ctx-btn-close');
+    this.ctxBackdrop = document.getElementById('ctx-backdrop');
+    this.ctxBtnSelect = document.getElementById('ctx-btn-select');
+    this.ctxSelectText = document.getElementById('ctx-select-text');
+    this.ctxHeartIcon = document.getElementById('ctx-heart-icon');
+    this.ctxBtnPriority = document.getElementById('ctx-btn-priority');
+    this.ctxPriorityText = document.getElementById('ctx-priority-text');
+    this.ctxStarIcon = document.getElementById('ctx-star-icon');
+    this.ctxBtnNote = document.getElementById('ctx-btn-note');
+    this.ctxBtnDownload = document.getElementById('ctx-btn-download');
+
+    const closeMenu = () => {
+      this.contextMenu?.classList.add('hidden');
+      this.activeContextPhoto = null;
+    };
+
+    this.ctxBtnClose?.addEventListener('click', closeMenu);
+    this.ctxBackdrop?.addEventListener('click', closeMenu);
+
+    this.ctxBtnSelect?.addEventListener('click', () => {
+      if (this.activeContextPhoto) {
+        this.toggleHeart(this.activeContextPhoto.id);
+        closeMenu();
+      }
+    });
+
+    this.ctxBtnPriority?.addEventListener('click', () => {
+      if (this.activeContextPhoto) {
+        this.toggleStar(this.activeContextPhoto.id);
+        closeMenu();
+      }
+    });
+
+    this.ctxBtnNote?.addEventListener('click', () => {
+      if (this.activeContextPhoto) {
+        const idx = this.filteredPhotos.indexOf(this.activeContextPhoto);
+        closeMenu();
+        this.openLightboxAt(idx >= 0 ? idx : 0, true);
+      }
+    });
+
+    this.ctxBtnDownload?.addEventListener('click', () => {
+      if (this.activeContextPhoto) {
+        const p = this.activeContextPhoto;
+        closeMenu();
+        this.downloadSinglePhoto(p);
+      }
+    });
+  }
+
+  openPhotoContextMenu(photo, index) {
+    if (!photo || !this.contextMenu) return;
+    this.activeContextPhoto = photo;
+    const sel = this.getPhotoSelection(photo.id);
+
+    if (this.ctxThumb) this.ctxThumb.src = photo.gridUrl || photo.thumbUrl;
+    if (this.ctxName) this.ctxName.textContent = photo.name;
+    if (this.ctxMeta) {
+      this.ctxMeta.textContent = `${photo.folderName || 'Ảnh chung'} • ${sel.selected ? 'Đã chọn ♥' : 'Chưa chọn'}`;
+    }
+
+    if (this.ctxSelectText) {
+      this.ctxSelectText.textContent = sel.selected ? 'Bỏ chọn ảnh này' : 'Chọn bức ảnh này';
+    }
+    if (this.ctxHeartIcon) {
+      this.ctxHeartIcon.textContent = sel.selected ? '💔' : '❤️';
+    }
+
+    if (this.ctxPriorityText) {
+      this.ctxPriorityText.textContent = sel.priority ? 'Bỏ đánh dấu ưu tiên' : 'Đánh dấu ưu tiên / In phóng';
+    }
+    if (this.ctxStarIcon) {
+      this.ctxStarIcon.textContent = sel.priority ? '⭐' : '☆';
+    }
+
+    this.contextMenu.classList.remove('hidden');
+  }
+
+  // --- Chụp Mặt Selfie Nhận Diện Tức Thì Cho Khách Sự Kiện ---
+  initSelfieCapture() {
+    this.faceSelfieInput = document.getElementById('face-selfie-input');
+    this.btnTriggerSelfie = document.getElementById('btn-trigger-selfie-scan');
+    this.btnPeopleSelfie = document.getElementById('btn-people-selfie');
+
+    const triggerCapture = () => {
+      this.faceSelfieInput?.click();
+    };
+
+    this.btnTriggerSelfie?.addEventListener('click', triggerCapture);
+    this.btnPeopleSelfie?.addEventListener('click', triggerCapture);
+
+    this.faceSelfieInput?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      this.faceSelfieInput.value = '';
+      await this.handleSelfieFaceSearch(file);
+    });
+  }
+
+  async handleSelfieFaceSearch(file) {
+    this.openFaceModal();
+    this.showFaceStep('scan');
+    this.faceScanStatusTitle.textContent = 'Đang nhận diện khuôn mặt bạn từ ảnh selfie...';
+    this.faceScanStatusDesc.textContent = 'AI đang trích xuất đặc trưng khuôn mặt của bạn...';
+    this.faceScanProgressFill.style.width = '20%';
+
+    try {
+      const imgUrl = URL.createObjectURL(file);
+      const imgEl = new Image();
+      imgEl.src = imgUrl;
+      await new Promise((res, rej) => {
+        imgEl.onload = res;
+        imgEl.onerror = () => rej(new Error('Không thể tải ảnh selfie vừa chụp'));
+      });
+
+      const faces = await this.faceEngine.detectFacesInImage(imgEl);
+      if (!faces || faces.length === 0) {
+        alert('Không phát hiện thấy khuôn mặt rõ nét trong ảnh chụp. Vui lòng chụp lại ảnh khuôn mặt chính diện, đủ sáng nhé!');
+        this.showFaceStep('clusters');
+        return;
+      }
+
+      this.faceScanProgressFill.style.width = '50%';
+      const face = faces[0];
+
+      // Cắt ảnh avatar khuôn mặt selfie
+      const avatarCanvas = document.createElement('canvas');
+      avatarCanvas.width = 120;
+      avatarCanvas.height = 120;
+      const ctx = avatarCanvas.getContext('2d');
+      const [x, y, w, h] = face.box;
+      ctx.drawImage(imgEl, x, y, w, h, 0, 0, 120, 120);
+      const avatarDataUrl = avatarCanvas.toDataURL('image/jpeg', 0.85);
+
+      this.faceScanStatusTitle.textContent = 'Đang tìm ảnh có mặt bạn trong sự kiện...';
+      const scores = await this.faceEngine.scanAlbumForFace(this.allPhotos, face.embedding, (p) => {
+        const pct = Math.round(50 + (p.current / (p.total || 1)) * 50);
+        this.faceScanProgressFill.style.width = `${pct}%`;
+        this.faceScanStatusDesc.textContent = `Đang so khớp với ${p.current} / ${p.total} ảnh...`;
+      });
+
+      this.faceScoresMap = scores;
+      const defaultThreshold = STUDIO_CONFIG.faceAI.defaultThreshold || 0.52;
+      this.activeFaceFilter = {
+        targetEmbedding: face.embedding,
+        avatarUrl: avatarDataUrl,
+        scores,
+        threshold: defaultThreshold,
+      };
+
+      this.faceBannerAvatar.src = avatarDataUrl;
+      this.faceThresholdSlider.value = defaultThreshold;
+      this.faceThresholdVal.textContent = `${Math.round(defaultThreshold * 100)}%`;
+      this.faceActiveBanner.classList.remove('hidden');
+
+      this.closeFaceModal();
+      this.applyFilters();
+
+      const matchCount = Array.from(scores.values()).filter((s) => s >= defaultThreshold).length;
+      this.showToast(`🎉 Đã nhận diện khuôn mặt bạn và tìm thấy ${matchCount} ảnh!`, 'success');
+      URL.revokeObjectURL(imgUrl);
+    } catch (err) {
+      console.error('Lỗi nhận diện selfie:', err);
+      alert('Lỗi nhận diện khuôn mặt: ' + err.message);
+      this.showFaceStep('clusters');
     }
   }
 

@@ -292,12 +292,18 @@ export class GalleryGrid {
     actions.appendChild(starBtn);
     actions.appendChild(heartBtn);
 
-    // Huy hiệu Bỏ chọn nhanh (hiển thị khi bật Chế độ chạm bỏ chọn nhanh)
-    const quickBadge = document.createElement('div');
-    quickBadge.className = 'quick-remove-badge';
-    quickBadge.innerHTML = '<span>✕ Chạm để bỏ</span>';
+    // Nhãn chữ đỏ hiển thị rõ ảnh có ghi chú ở góc trên bên phải
+    const redNoteBadge = document.createElement('div');
+    redNoteBadge.className = `card-note-red-badge${hasNotes ? '' : ' hidden'}`;
+    const previewNoteText = sel.note ? sel.note : (sel.tags && sel.tags.length ? sel.tags.join(', ') : 'Có ghi chú');
+    redNoteBadge.innerHTML = `<span class="note-red-dot">💬</span><span class="note-red-text">${previewNoteText}</span>`;
+    redNoteBadge.title = `Ghi chú: ${previewNoteText} (Bấm để xem/sửa)`;
+    redNoteBadge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.callbacks.onOpenLightbox(index, true);
+    });
 
-    // Góc dưới: Tên file gọn & Nút Tải gốc (nếu download=1)
+    // Góc dưới: Tên file gọn & Nút Tải gốc trực tiếp (nếu download=1)
     const overlayBottom = document.createElement('div');
     overlayBottom.className = 'photo-overlay-bottom';
 
@@ -308,28 +314,102 @@ export class GalleryGrid {
     overlayBottom.appendChild(fileNameEl);
 
     if (this.callbacks.allowDownload) {
-      const dlLink = document.createElement('a');
-      dlLink.className = 'card-download-btn';
-      dlLink.href = photo.downloadUrl;
-      dlLink.target = '_blank';
-      dlLink.rel = 'noopener noreferrer';
-      dlLink.download = photo.name;
-      dlLink.title = 'Tải ảnh gốc chất lượng cao';
-      dlLink.setAttribute('aria-label', `Tải ảnh gốc ${photo.name}`);
-      dlLink.innerHTML = ICONS.download;
-      dlLink.addEventListener('click', (e) => e.stopPropagation());
-      overlayBottom.appendChild(dlLink);
+      const dlBtn = document.createElement('button');
+      dlBtn.type = 'button';
+      dlBtn.className = 'card-download-btn';
+      dlBtn.title = 'Tải ảnh chất lượng cao trực tiếp về máy';
+      dlBtn.setAttribute('aria-label', `Tải ảnh ${photo.name}`);
+      dlBtn.innerHTML = ICONS.download;
+      dlBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.callbacks.onDownloadPhoto) {
+          this.callbacks.onDownloadPhoto(photo);
+        }
+      });
+      overlayBottom.appendChild(dlBtn);
     }
 
     card.appendChild(imgWrap);
     card.appendChild(badgesLeft);
     card.appendChild(actions);
-    card.appendChild(quickBadge);
+    card.appendChild(redNoteBadge);
     card.appendChild(overlayBottom);
 
+    // Thao tác ấn giữ (Long-press) để mở menu thao tác nhanh trên điện thoại & máy tính
+    let longPressTimer = null;
+    let isLongPressTriggered = false;
+    let startX = 0;
+    let startY = 0;
+
+    const startPress = (x, y) => {
+      isLongPressTriggered = false;
+      startX = x;
+      startY = y;
+      longPressTimer = setTimeout(() => {
+        isLongPressTriggered = true;
+        if (this.callbacks.onPhotoLongPress) {
+          this.callbacks.onPhotoLongPress(photo, index);
+        }
+      }, 450);
+    };
+
+    const cancelPress = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    };
+
+    card.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        startPress(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    card.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1) {
+        const dx = Math.abs(e.touches[0].clientX - startX);
+        const dy = Math.abs(e.touches[0].clientY - startY);
+        if (dx > 10 || dy > 10) {
+          cancelPress();
+        }
+      }
+    }, { passive: true });
+
+    card.addEventListener('touchend', () => cancelPress());
+    card.addEventListener('touchcancel', () => cancelPress());
+
+    card.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        startPress(e.clientX, e.clientY);
+      }
+    });
+
+    card.addEventListener('mousemove', (e) => {
+      const dx = Math.abs(e.clientX - startX);
+      const dy = Math.abs(e.clientY - startY);
+      if (dx > 10 || dy > 10) {
+        cancelPress();
+      }
+    });
+
+    card.addEventListener('mouseup', () => cancelPress());
+    card.addEventListener('mouseleave', () => cancelPress());
+
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      cancelPress();
+      if (this.callbacks.onPhotoLongPress) {
+        this.callbacks.onPhotoLongPress(photo, index);
+      }
+    });
+
     card.addEventListener('click', (e) => {
-      // Nếu đang ở Chế độ chạm nhanh hoặc giữ phím Ctrl/Alt/Shift: chọn/bỏ chọn ngay tức khắc
-      if ((this.callbacks.isQuickToggleMode && this.callbacks.isQuickToggleMode()) || e.ctrlKey || e.altKey || e.shiftKey) {
+      if (isLongPressTriggered) {
+        isLongPressTriggered = false;
+        return;
+      }
+      if (e.ctrlKey || e.altKey || e.shiftKey) {
         this.callbacks.onToggleHeart(photo.id);
         return;
       }
@@ -378,6 +458,18 @@ export class GalleryGrid {
     const noteBadge = card.querySelector('.note-badge-btn');
     if (noteBadge) {
       noteBadge.classList.toggle('hidden', !this.hasNoteData(sel));
+    }
+
+    const redNoteBadge = card.querySelector('.card-note-red-badge');
+    if (redNoteBadge) {
+      const hasNotes = this.hasNoteData(sel);
+      redNoteBadge.classList.toggle('hidden', !hasNotes);
+      if (hasNotes) {
+        const previewNoteText = sel.note ? sel.note : (sel.tags && sel.tags.length ? sel.tags.join(', ') : 'Có ghi chú');
+        const textSpan = redNoteBadge.querySelector('.note-red-text');
+        if (textSpan) textSpan.textContent = previewNoteText;
+        redNoteBadge.title = `Ghi chú: ${previewNoteText} (Bấm để xem/sửa)`;
+      }
     }
   }
 }

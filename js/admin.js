@@ -39,11 +39,48 @@ export class AdminManager {
   }
 
   loadHistory() {
+    let saved = [];
     try {
-      return JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY)) || [];
+      saved = JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY)) || [];
     } catch {
-      return [];
+      saved = [];
     }
+
+    const defaultAlbums = STUDIO_CONFIG.defaultAlbums || [
+      {
+        folderId: '17cOYU7FhxtOs9yTw_RbZs_fj9yAdepTI',
+        client: 'doi cuoi tu son 21',
+        pkg: 'Album Tiêu Chuẩn',
+        slug: 'doi-cuoi-tu-son-21',
+        limit: 0,
+        download: 1,
+        time: 'Album hiện tại',
+      },
+    ];
+
+    const baseOrigin = window.location.origin + window.location.pathname;
+    let hasNew = false;
+    for (const def of defaultAlbums) {
+      if (!saved.some((item) => item.folderId === def.folderId || (def.slug && item.slug === def.slug))) {
+        saved.push({
+          ...def,
+          shortUrl: `${baseOrigin}?k=${encodeURIComponent(def.slug)}&f=${encodeURIComponent(def.folderId)}`,
+          link: `${baseOrigin}?k=${encodeURIComponent(def.slug)}&f=${encodeURIComponent(def.folderId)}`,
+          updatedAt: Date.now(),
+        });
+        hasNew = true;
+      }
+    }
+
+    if (hasNew) {
+      try {
+        localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(saved));
+      } catch {
+        // ignore
+      }
+    }
+
+    return saved;
   }
 
   saveHistory(item) {

@@ -47,6 +47,19 @@ export const STUDIO_CONFIG = {
     { label: 'Không giới hạn', value: 'Chon_Tu_Do', limit: 0 },
   ],
 
+  // Danh sách album mặc định của Studio hiển thị trong Quản lý Link Đã Tạo
+  defaultAlbums: [
+    {
+      folderId: '17cOYU7FhxtOs9yTw_RbZs_fj9yAdepTI',
+      client: 'doi cuoi tu son 21',
+      pkg: 'Album Tiêu Chuẩn',
+      slug: 'doi-cuoi-tu-son-21',
+      limit: 0,
+      download: 1,
+      time: 'Album hiện tại',
+    },
+  ],
+
   // Cấu hình Nhận diện khuôn mặt nhẹ trên trình duyệt (@vladmandic/human)
   faceAI: {
     // Phiên bản CDN đồng bộ giữa ESM module và thư mục models (~5-6MB tải khi bấm lọc)

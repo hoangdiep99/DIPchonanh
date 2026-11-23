@@ -29,9 +29,18 @@
           </div>
         </div>
 
+        <div class="header-actions">
+          <a href="#admin" id="btn-to-admin" class="btn btn-admin-nav" title="Đăng nhập tài khoản Quản trị Studio">
+            <span id="admin-nav-icon">👤</span> <span id="admin-nav-text">Quản trị</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Hàng thông tin định mức & trạng thái đồng bộ -->
+      <div class="header-sub-row">
         <div class="header-chips">
-          <span class="meta-pill" id="header-limit-pill" style="cursor:pointer;" title="Định mức số lượng ảnh cần chọn của gói">
-            Số lượng chọn: <strong id="header-limit-count" class="tabular-nums">Không giới hạn</strong> <span id="header-limit-edit-icon" class="hidden">✏️</span>
+          <span class="meta-pill" id="header-limit-pill" style="cursor:default;" title="Định mức số lượng ảnh cần chọn của gói">
+            Định mức: <strong id="header-limit-count" class="tabular-nums">Không giới hạn</strong>
           </span>
           <button type="button" id="btn-cloud-sync" class="cloud-sync-pill" title="Bấm để đồng bộ ngay với các thiết bị khác (điện thoại, máy tính)">
             <span class="sync-dot"></span>
@@ -39,32 +48,29 @@
             <span id="sync-status-text">Đồng bộ đám mây</span>
           </button>
           <span id="draft-indicator" class="draft-indicator hidden">Đã lưu tự động</span>
-          <a href="#admin" id="btn-to-admin" class="btn btn-admin-nav" title="Đăng nhập tài khoản Quản trị Studio">
-            <span id="admin-nav-icon">👤</span> <span id="admin-nav-text">Đăng nhập</span>
-          </a>
         </div>
       </div>
 
-      <!-- Thanh điều hướng thư mục phân cảnh, Sắp xếp & Tìm kiếm file -->
+      <!-- Thanh điều hướng thư mục phân cảnh, Sắp xếp & Tìm kiếm file (1 hàng ngang) -->
       <div class="header-nav-row">
         <nav id="folder-tabs" class="folder-tabs" aria-label="Thư mục phân cảnh"></nav>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <div class="sort-box">
-            <select id="sort-select" class="sort-select" aria-label="Sắp xếp danh sách ảnh">
-              <option value="name_asc">Sắp xếp: Tên A → Z</option>
-              <option value="name_desc">Sắp xếp: Tên Z → A</option>
-              <option value="selected_first">Sắp xếp: Đã chọn lên đầu ♥</option>
-              <option value="priority_first">Sắp xếp: Ưu tiên lên đầu ★</option>
-              <option value="date_desc">Sắp xếp: Mới nhất trước</option>
-              <option value="date_asc">Sắp xếp: Cũ nhất trước</option>
-            </select>
-          </div>
+        <div class="search-sort-bar">
           <div class="search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="10" cy="10" r="7"/><path d="M21 21l-6 -6"/>
             </svg>
-            <input type="text" id="search-input" class="search-input" placeholder="Tìm theo tên file (VD: 0012)..." aria-label="Tìm theo tên file">
+            <input type="text" id="search-input" class="search-input" placeholder="Tìm tên file (VD: 0012)..." aria-label="Tìm theo tên file">
             <button type="button" id="search-clear-btn" class="search-clear-btn hidden" aria-label="Xóa tìm kiếm">✕</button>
+          </div>
+          <div class="sort-box">
+            <select id="sort-select" class="sort-select" aria-label="Sắp xếp danh sách ảnh">
+              <option value="name_asc">↕ Tên A → Z</option>
+              <option value="name_desc">↕ Tên Z → A</option>
+              <option value="selected_first">♥ Đã chọn</option>
+              <option value="priority_first">★ Ưu tiên</option>
+              <option value="date_desc">Mới nhất</option>
+              <option value="date_asc">Cũ nhất</option>
+            </select>
           </div>
         </div>
       </div>
@@ -95,6 +101,9 @@
           <span>Tất cả</span>
           <span id="people-all-count" class="people-count">0</span>
         </button>
+        <button type="button" id="btn-people-selfie" class="people-chip people-selfie-chip" title="Chụp ảnh khuôn mặt của bạn để tìm ảnh">
+          <span>📸 Chụp mặt tìm ảnh</span>
+        </button>
       </div>
       <div id="people-chips-list" class="people-chips-list"></div>
     </div>
@@ -123,27 +132,6 @@
 
   <!-- Màn hình duyệt ảnh chính (Justified Grid) -->
   <main id="gallery-container" class="gallery-main">
-    <!-- Thanh Thao Tác Bỏ Chọn Nhanh (Tự động hiển thị khi lọc ảnh Đã chọn) -->
-    <div id="selected-toolbar" class="selected-toolbar hidden">
-      <div class="selected-toolbar-info">
-        <span class="selected-toolbar-badge">
-          <span class="dot-heart"></span>
-          <span id="selected-toolbar-count">0 ảnh đã chọn</span>
-        </span>
-        <span class="selected-toolbar-tip">💡 <strong>Mẹo:</strong> Bật chế độ chạm nhanh để bấm vào bất kỳ đâu trên ảnh là gỡ bỏ ngay!</span>
-      </div>
-      <div class="selected-toolbar-actions">
-        <button type="button" id="btn-toggle-quick-deselect" class="btn-quick-toggle" title="Chạm trực tiếp vào bất kỳ đâu trên bức ảnh để bỏ chọn ngay lập tức">
-          <span class="quick-toggle-dot"></span>
-          <span id="quick-toggle-label">⚡ Chế độ chạm bỏ chọn nhanh: TẮT</span>
-        </button>
-        <button type="button" id="btn-deselect-all" class="btn-deselect-all" title="Bỏ chọn tất cả các ảnh đã chọn">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7V4a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
-          <span>Bỏ chọn tất cả</span>
-        </button>
-      </div>
-    </div>
-
     <div id="gallery-grid" class="gallery-grid"></div>
 
     <!-- Trạng thái trống / đang tải -->
@@ -180,8 +168,8 @@
           <span>Đã chọn: <strong id="counter-selected" class="tabular-nums">0</strong> / <span id="counter-limit" class="tabular-nums">Không giới hạn</span></span>
           <span id="counter-warning" class="over-limit-tag hidden"></span>
         </div>
-        <button type="button" id="bar-btn-quick-mode" class="quick-mode-pill" title="Bật/Tắt chế độ chạm vào bất kỳ ảnh nào để chọn hoặc bỏ chọn ngay lập tức">
-          <span>⚡ Chạm nhanh: TẮT</span>
+        <button type="button" id="bar-btn-download-menu" class="quick-mode-pill" title="Tải ảnh đã chọn hoặc toàn bộ album">
+          <span>⬇️ Tải ảnh</span>
         </button>
       </div>
 
@@ -257,7 +245,8 @@
         </div>
         <div id="lb-quick-tags" class="quick-tags-row"></div>
         <div class="lb-note-row">
-          <input type="text" id="lb-note-input" class="lb-note-input" placeholder="Nhập thêm ghi chú riêng (VD: bóp eo bên trái, xóa bóng đèn...)" aria-label="Ghi chú ảnh">
+          <input type="text" id="lb-note-input" class="lb-note-input" placeholder="Nhập ghi chú riêng (VD: bóp eo, mịn da...)" aria-label="Ghi chú ảnh">
+          <button type="button" id="lb-note-save-btn" class="btn btn-primary btn-sm btn-note-save">✓ Lưu ghi chú</button>
         </div>
       </div>
 
@@ -298,6 +287,19 @@
       </div>
 
       <div class="modal-body">
+        <!-- Tùy chọn Chụp mặt Selfie nhận diện tức thì cho khách sự kiện -->
+        <div class="face-selfie-box">
+          <input type="file" id="face-selfie-input" accept="image/*" capture="user" class="hidden">
+          <button type="button" id="btn-trigger-selfie-scan" class="btn-selfie-cta">
+            <span class="selfie-cta-icon">📸</span>
+            <div class="selfie-cta-text">
+              <strong>Chụp ảnh mặt bạn (Selfie) tìm ảnh ngay</strong>
+              <span>Khách sự kiện: Chụp 1 ảnh khuôn mặt bạn, AI sẽ tìm toàn bộ ảnh có mặt bạn trong album!</span>
+            </div>
+            <span class="selfie-cta-arrow">›</span>
+          </button>
+        </div>
+
         <!-- Bước 0: Danh sách các khuôn mặt AI đã gom cụm tự động (People Album) -->
         <div id="face-step-clusters" class="face-step-pane hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
@@ -437,7 +439,11 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" id="btn-download-report-txt" class="btn btn-secondary btn-sm">Tải báo cáo (.txt)</button>
+        <div class="modal-footer-downloads">
+          <button type="button" id="btn-download-selected-zip" class="btn btn-secondary btn-sm" title="Tải tất cả các ảnh đã chọn vào file nén .ZIP">⬇️ Tải ảnh đã chọn (.zip)</button>
+          <button type="button" id="btn-download-all-zip" class="btn btn-ghost btn-sm" title="Tải toàn bộ album ảnh vào file nén .ZIP">⬇️ Tải tất cả (.zip)</button>
+          <button type="button" id="btn-download-report-txt" class="btn btn-ghost btn-sm">Tải báo cáo (.txt)</button>
+        </div>
         <button type="button" id="btn-confirm-send-order" class="btn btn-primary">Xác nhận gửi đơn</button>
       </div>
     </div>
@@ -787,7 +793,45 @@
     })();
   </script>
 
+  <!-- Menu ngữ cảnh khi ấn giữ ảnh (Long-press Context Menu) -->
+  <div id="photo-context-menu" class="photo-context-menu hidden" role="dialog" aria-modal="true" aria-label="Tùy chọn ảnh">
+    <div class="context-menu-backdrop" id="ctx-backdrop"></div>
+    <div class="context-menu-sheet">
+      <div class="context-menu-header">
+        <div class="context-menu-thumb-wrap">
+          <img id="ctx-photo-thumb" src="" alt="Thumbnail" class="context-photo-thumb">
+        </div>
+        <div class="context-menu-info">
+          <div id="ctx-photo-name" class="context-photo-name">DIP_0000.jpg</div>
+          <div id="ctx-photo-meta" class="context-photo-meta">Chạm vào để chọn thao tác nhanh</div>
+        </div>
+        <button type="button" id="ctx-btn-close" class="context-close-btn" aria-label="Đóng">✕</button>
+      </div>
+      <div class="context-menu-actions">
+        <button type="button" class="context-menu-btn" id="ctx-btn-select">
+          <span class="ctx-btn-icon" id="ctx-heart-icon">❤️</span>
+          <span class="ctx-btn-text" id="ctx-select-text">Chọn ảnh này</span>
+        </button>
+        <button type="button" class="context-menu-btn" id="ctx-btn-priority">
+          <span class="ctx-btn-icon" id="ctx-star-icon">⭐</span>
+          <span class="ctx-btn-text" id="ctx-priority-text">Đánh dấu ưu tiên / In</span>
+        </button>
+        <button type="button" class="context-menu-btn" id="ctx-btn-note">
+          <span class="ctx-btn-icon">💬</span>
+          <span class="ctx-btn-text">Thêm / Xem ghi chú</span>
+        </button>
+        <button type="button" class="context-menu-btn ctx-btn-download" id="ctx-btn-download">
+          <span class="ctx-btn-icon">⬇️</span>
+          <span class="ctx-btn-text">Tải ảnh gốc về máy</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thư viện nén file ZIP cho tải hàng loạt -->
+  <script src="js/jszip.min.js"></script>
+
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=8.3"></script>
+  <script type="module" src="js/app.js?v=8.4"></script>
 </body>
 </html>

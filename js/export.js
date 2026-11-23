@@ -157,7 +157,7 @@ export const ExportService = {
     const clientDisplay = (payload.clientName || 'Khách hàng').replace(/_/g, ' ');
     const pkgDisplay = (payload.packageName || 'Tùy chọn').replace(/_/g, ' ');
 
-    const message = [
+    const lines = [
       `🔔 *ĐƠN CHỌN ẢNH MỚI - ${STUDIO_CONFIG.studioName}*`,
       `👤 *Khách hàng:* ${clientDisplay}`,
       `📦 *Gói chụp:* ${pkgDisplay}`,
@@ -167,9 +167,27 @@ export const ExportService = {
         : '',
       `\n*Dán nhanh vào Capture One / Lightroom:*`,
       `\`${payload.c1StringNoExt}\``,
-    ]
-      .filter(Boolean)
-      .join('\n');
+    ].filter(Boolean);
+
+    // Danh sách ảnh có ghi chú hoặc ưu tiên
+    const itemsWithNotesOrPriority = (payload.items || []).filter(
+      (i) => i.isPriority || (i.note && i.note.trim()) || (i.tags && i.tags.length > 0)
+    );
+
+    if (itemsWithNotesOrPriority.length > 0) {
+      lines.push(`\n📝 *CHI TIẾT ẢNH CÓ GHI CHÚ & ƯU TIÊN:*`);
+      itemsWithNotesOrPriority.forEach((it, idx) => {
+        const prefix = it.isPriority ? '★ ' : '♥ ';
+        const tagStr = it.tags && it.tags.length ? ` [${it.tags.join(', ')}]` : '';
+        const noteStr = it.note ? ` : ${it.note}` : '';
+        lines.push(`${idx + 1}. ${prefix}\`${it.filename}\`${tagStr}${noteStr}`);
+      });
+    }
+
+    let message = lines.join('\n');
+    if (message.length > 3900) {
+      message = message.slice(0, 3850) + '\n\n...(Xem thêm trong file báo cáo đính kèm)...';
+    }
 
     try {
       const url = `https://api.telegram.org/bot${token}/sendMessage`;

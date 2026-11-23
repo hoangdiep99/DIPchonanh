@@ -217,6 +217,29 @@ a {
   }
 }
 
+.header-sub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.header-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .header-chips {
   display: flex;
   align-items: center;
@@ -412,11 +435,15 @@ a {
 
 @media (max-width: 639px) {
   .search-box {
-    width: 100%;
+    flex: 1 1 auto;
+    width: auto !important;
+    min-width: 0;
   }
   .search-input,
   .search-input:focus {
-    width: 100%;
+    width: 100% !important;
+    font-size: 13px;
+    padding: 7px 26px 7px 30px;
   }
 }
 
@@ -2408,9 +2435,15 @@ a {
 }
 
 @media (max-width: 639px) {
-  .sort-box,
+  .sort-box {
+    flex: 0 0 auto;
+    width: auto !important;
+  }
   .sort-select {
-    width: 100%;
+    width: auto !important;
+    max-width: 125px;
+    font-size: 12px;
+    padding: 7px 8px;
   }
 }
 
@@ -2575,4 +2608,253 @@ a {
   font-size: 11px;
   opacity: 0.78;
   font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Red Note Badge on Photo Card (Góc trên phải chữ đỏ rõ ràng)
+   ========================================================================== */
+.card-note-red-badge {
+  position: absolute;
+  top: 42px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(220, 38, 38, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.45);
+  max-width: calc(100% - 12px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  z-index: 4;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.card-note-red-badge:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.card-note-red-badge .note-red-dot {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.card-note-red-badge .note-red-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+/* ==========================================================================
+   Long-press Context Menu (Popup khi ấn giữ ảnh)
+   ========================================================================== */
+.photo-context-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.18s ease;
+}
+
+.context-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.context-menu-sheet {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-surface);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 16px 16px calc(16px + var(--bottom-safe));
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.22s ease-out;
+}
+
+.context-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-hairline);
+  margin-bottom: 12px;
+}
+
+.context-menu-thumb-wrap {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-subtle);
+}
+
+.context-photo-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.context-menu-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.context-photo-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-photo-meta {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.context-close-btn {
+  background: var(--bg-subtle);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 14px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.context-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.context-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-page);
+  color: var(--ink-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.context-menu-btn:hover {
+  background: var(--bg-subtle);
+  transform: translateY(-1px);
+}
+
+.context-menu-btn.ctx-btn-download {
+  color: var(--accent-heart);
+  background: rgba(225, 29, 72, 0.05);
+  border-color: rgba(225, 29, 72, 0.2);
+}
+
+/* ==========================================================================
+   Selfie Event Guest Recognition (Chụp mặt AI tìm ảnh sự kiện)
+   ========================================================================== */
+.face-selfie-box {
+  margin-bottom: 14px;
+}
+
+.btn-selfie-cta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #18181b 0%, #27272a 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  text-align: left;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.btn-selfie-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.selfie-cta-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.selfie-cta-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.selfie-cta-text strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.selfie-cta-text span {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.selfie-cta-arrow {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.people-selfie-chip {
+  background: #18181b !important;
+  color: #FFFFFF !important;
+  border-color: #18181b !important;
+}
+
+.modal-footer-downloads {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-note-save {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 14px;
 }

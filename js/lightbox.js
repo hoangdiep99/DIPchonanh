@@ -71,8 +71,9 @@ export class LightboxModal {
     this.noteDot = this.modalEl.querySelector('#lb-note-dot');
     this.quickTagsEl = this.modalEl.querySelector('#lb-quick-tags');
     this.noteInput = this.modalEl.querySelector('#lb-note-input');
+    this.noteSaveBtn = this.modalEl.querySelector('#lb-note-save-btn');
 
-    // Khởi tạo các chip Quick Tag một chạm
+    // Khởi tạo các chip Quick Tag một chạm (ấn vào tự động điền/bỏ ghi chú)
     this.quickTagsEl.innerHTML = '';
     for (const tag of this.quickTags) {
       const btn = document.createElement('button');
@@ -84,6 +85,19 @@ export class LightboxModal {
         const photo = this.currentPhoto();
         if (!photo) return;
         this.callbacks.onToggleTag(photo.id, tag);
+        const sel = this.callbacks.getSelection(photo.id);
+        const isTagActive = sel.tags && sel.tags.includes(tag);
+
+        let currentNote = (this.noteInput.value || '').trim();
+        if (isTagActive) {
+          if (!currentNote.includes(tag)) {
+            currentNote = currentNote ? `${currentNote}, ${tag}` : tag;
+          }
+        } else {
+          currentNote = currentNote.replace(new RegExp(`(^|,\\s*)${tag}`, 'gi'), '').replace(/^,\\s*/, '').trim();
+        }
+        this.noteInput.value = currentNote;
+        this.callbacks.onUpdateNote(photo.id, currentNote);
         this.syncControls();
       });
       this.quickTagsEl.appendChild(btn);
@@ -144,11 +158,41 @@ export class LightboxModal {
       this.callbacks.onFindFaceFromPhoto?.(photo);
     });
 
+    const saveAndCloseNote = () => {
+      const photo = this.currentPhoto();
+      if (!photo) return;
+      const noteVal = this.noteInput.value.trim();
+      this.callbacks.onUpdateNote(photo.id, noteVal);
+      this.syncControls();
+      this.notesDrawer?.classList.add('hidden');
+      this.noteToggleBtn?.classList.remove('is-active');
+      if (typeof this.callbacks.showToast === 'function') {
+        this.callbacks.showToast('✅ Đã lưu ghi chú cho ảnh!', 'success');
+      }
+    };
+
+    this.noteSaveBtn?.addEventListener('click', saveAndCloseNote);
+    this.noteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveAndCloseNote();
+      }
+    });
+
     this.noteInput.addEventListener('input', () => {
       const photo = this.currentPhoto();
       if (!photo) return;
       this.callbacks.onUpdateNote(photo.id, this.noteInput.value);
       this.syncControls(false);
+    });
+
+    // Tải ảnh trực tiếp chất lượng cao (không chuyển trang Google Drive)
+    this.downloadLink?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const photo = this.currentPhoto();
+      if (photo && this.callbacks.onDownloadPhoto) {
+        this.callbacks.onDownloadPhoto(photo);
+      }
     });
 
     // Phím tắt máy tính
@@ -392,8 +436,8 @@ export class LightboxModal {
     this.folderEl.classList.toggle('hidden', !photo.folderName);
 
     if (this.downloadLink && this.allowDownload) {
-      this.downloadLink.href = photo.downloadUrl;
-      this.downloadLink.download = photo.name;
+      this.downloadLink.href = 'javascript:void(0);';
+      this.downloadLink.title = `Tải ảnh ${photo.name} về máy`;
     }
 
     this.prevBtn.classList.toggle('hidden', this.photos.length <= 1);
