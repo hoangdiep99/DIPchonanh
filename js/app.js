@@ -61,13 +61,13 @@ class AppController {
 
   parseQueryParams() {
     const params = new URLSearchParams(window.location.search);
-    let folder = params.get('folder') || '';
-    let client = params.get('khach') || '';
+    let folder = params.get('folder') || params.get('f') || '';
+    let client = params.get('khach') || params.get('k') || '';
     let pkg = params.get('goi') || '';
     let limit = parseInt(params.get('limit'), 10) || 0;
     let download = params.get('download') !== '0';
 
-    // Tra cứu link ngắn theo tên khách (?k=... hoặc ?album=...)
+    // Tra cứu link ngắn theo tên khách (?k=... hoặc ?album=...) nếu chưa có folder
     const shortKey = params.get('k') || params.get('album');
     if (shortKey && !folder) {
       try {
@@ -88,6 +88,11 @@ class AppController {
       } catch (e) {
         // ignore
       }
+    }
+
+    // Nếu tên khách lấy từ slug k (ví dụ: doi-cuoi-tu-son-21), hiển thị đẹp mắt
+    if (client && !params.get('khach') && params.get('k')) {
+      client = client.replace(/[-_]+/g, ' ');
     }
 
     this.folderId = folder;

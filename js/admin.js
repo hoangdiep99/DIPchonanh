@@ -349,30 +349,35 @@ export class AdminManager {
 
     const baseOrigin = window.location.origin + window.location.pathname;
 
-    // 1. Link ngắn gọn theo tên khách (?k=slug)
-    const shortUrl = `${baseOrigin}?k=${encodeURIComponent(slug)}`;
+    // 1. Link ngắn gọn theo tên khách (kèm mã f để mở được trên mọi điện thoại của khách hàng)
+    let shortUrl = `${baseOrigin}?k=${encodeURIComponent(slug)}&f=${encodeURIComponent(folderId)}`;
+    if (limit > 0) shortUrl += `&limit=${limit}`;
 
     // 2. Link đầy đủ
     const fullParams = new URLSearchParams();
     fullParams.set('folder', folderId);
     fullParams.set('khach', client);
-    fullParams.set('goi', pkg);
+    if (pkg && pkg !== 'Album Tiêu Chuẩn' && pkg !== 'Tieu_Chuan') fullParams.set('goi', pkg);
     if (limit > 0) fullParams.set('limit', limit);
     fullParams.set('download', download);
     const fullUrl = `${baseOrigin}?${fullParams.toString()}`;
 
     // Lời nhắn Zalo lịch sự
+    const pkgText = (pkg && pkg !== 'Album Tiêu Chuẩn' && pkg !== 'Tieu_Chuan') ? ` cho gói "${pkg.replace(/_/g, ' ')}"` : '';
     const msgTemplate = [
       `Dạ em chào anh/chị ${client}! ✨`,
-      `${STUDIO_CONFIG.studioName} gửi anh/chị đường link để xem và chọn ảnh cho gói "${pkg.replace(/_/g, ' ')}":`,
+      `${STUDIO_CONFIG.studioName} gửi anh/chị đường link để xem và chọn ảnh${pkgText}:`,
       `👉 ${shortUrl}`,
-      `(Link dự phòng: ${fullUrl})`,
       ``,
       `📌 HƯỚNG DẪN CHỌN ẢNH:`,
-      `• Thả tim (♥) vào ảnh anh/chị chọn chỉnh sửa${limit > 0 ? ` (định mức gói: ${limit} ảnh)` : ''}.`,
+      `• Thả tim (♥) vào ảnh anh/chị chọn chỉnh sửa${limit > 0 ? ` (định mức: ${limit} ảnh)` : ''}.`,
       `• Bấm hình ngôi sao (★) cho ảnh muốn in phóng lớn/ảnh cổng.`,
       `• Có thể ghi chú trực tiếp yêu cầu (bóp mặt, chỉnh sáng...) ngay dưới từng ảnh.`,
       `• Sử dụng tính năng "Lọc theo khuôn mặt" để tìm ảnh nhanh chóng.`,
+      `• Chọn xong, anh/chị bấm "Gửi danh sách" ở thanh dưới cùng nhé!`,
+      ``,
+      `Cần hỗ trợ anh/chị liên hệ hotline: ${STUDIO_CONFIG.studioHotline} nha. Em cảm ơn anh/chị! ❤️`,
+    ].join('\n');
       `• Chọn xong, anh/chị bấm "Gửi danh sách" ở thanh dưới cùng nhé!`,
       ``,
       `Cần hỗ trợ anh/chị liên hệ hotline: ${STUDIO_CONFIG.studioHotline} nha. Em cảm ơn anh/chị! ❤️`,
