@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=9.6">
+  <link rel="stylesheet" href="css/styles.css?v=9.7">
 </head>
 <body>
 
@@ -383,6 +383,46 @@
                   <span class="face-stat-num" id="face-stat-clusters-count">0</span>
                   <span class="face-stat-label">Cụm người dự kiến</span>
                 </div>
+              </div>
+            </div>
+
+            <!-- Khu vực Tiến trình GitHub Actions Cloud AI -->
+            <div id="face-gh-actions-area" class="face-gh-actions-area hidden">
+              <div class="face-gh-actions-banner">
+                <div class="face-gh-icon">☁️</div>
+                <div class="face-gh-meta">
+                  <div class="face-gh-title">Máy chủ GitHub Actions đang quét album này</div>
+                  <div id="face-gh-runtime" class="face-gh-runtime">Thời gian đã chạy: Đang tính...</div>
+                </div>
+              </div>
+              <div class="face-gh-actions-buttons">
+                <a id="face-gh-log-link" href="https://github.com/hoangdiep99/DIPchonanh/actions" target="_blank" class="btn btn-primary btn-sm">
+                  🚀 Xem Nhật Ký Trực Tiếp Trên GitHub Actions ↗
+                </a>
+                <button type="button" id="face-gh-refresh-btn" class="btn btn-secondary btn-sm">
+                  🔄 Kiểm tra kết quả mới nhất
+                </button>
+              </div>
+              <div class="face-gh-fallback-row">
+                <span style="font-size:12px;color:var(--ink-muted);">Nếu không muốn chờ GitHub Actions:</span>
+                <button type="button" id="face-btn-start-browser-ai" class="btn btn-ghost btn-sm" style="font-size:12px;text-decoration:underline;">
+                  ⚡ Quét Ngay Bằng AI Web Trình Duyệt (@vladmandic/human)
+                </button>
+              </div>
+            </div>
+
+            <!-- Khu vực Khi Chưa Có Dữ Liệu Quét & GitHub Actions Không Chạy -->
+            <div id="face-no-scan-area" class="face-no-scan-area hidden">
+              <p style="font-size:13px;color:var(--ink-secondary);margin:0 0 12px;text-align:center;">
+                Album này chưa có dữ liệu nhận diện khuôn mặt. Bạn có thể chọn phương thức quét:
+              </p>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <button type="button" id="face-btn-trigger-browser-ai" class="btn btn-primary" style="justify-content:center;">
+                  ⚡ Quét Nhanh Bằng AI Web Trình Duyệt (@vladmandic/human)
+                </button>
+                <a href="https://github.com/hoangdiep99/DIPchonanh/actions/workflows/scan-faces.yml" target="_blank" class="btn btn-secondary" style="justify-content:center;">
+                  ☁️ Mở GitHub Actions Quét Chuẩn ArcFace (99.8%) ↗
+                </a>
               </div>
             </div>
 
@@ -921,6 +961,6 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=9.6"></script>
+  <script type="module" src="js/app.js?v=9.7"></script>
 </body>
 </html>

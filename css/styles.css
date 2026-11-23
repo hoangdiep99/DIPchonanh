@@ -3106,3 +3106,67 @@ a {
     align-items: flex-start;
   }
 }
+
+/* GitHub Actions Cloud Progress Box */
+.face-gh-actions-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(99, 102, 241, 0.08));
+  border: 1.5px solid rgba(59, 130, 246, 0.25);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.face-gh-actions-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.face-gh-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.face-gh-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.face-gh-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-primary, #18181b);
+}
+
+.face-gh-runtime {
+  font-size: 12.5px;
+  color: #2563eb;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.face-gh-actions-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.face-gh-fallback-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-hairline, #e4e4e7);
+}
+
+.face-no-scan-area {
+  padding: 14px;
+  background: var(--bg-page, #f8f7f4);
+  border-radius: 12px;
+  border: 1px dashed var(--border-hairline, #e4e4e7);
+}

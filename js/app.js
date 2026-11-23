@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=9.6';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=9.6';
-import { GalleryGrid } from './gallery.js?v=9.6';
-import { LightboxModal } from './lightbox.js?v=9.6';
-import { StorageManager } from './storage.js?v=9.6';
-import { FaceFilterEngine } from './face-filter.js?v=9.6';
-import { ExportService } from './export.js?v=9.6';
-import { AdminManager } from './admin.js?v=9.6';
+import { STUDIO_CONFIG } from '../config.js?v=9.7';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=9.7';
+import { GalleryGrid } from './gallery.js?v=9.7';
+import { LightboxModal } from './lightbox.js?v=9.7';
+import { StorageManager } from './storage.js?v=9.7';
+import { FaceFilterEngine } from './face-filter.js?v=9.7';
+import { ExportService } from './export.js?v=9.7';
+import { AdminManager } from './admin.js?v=9.7';
 
 class AppController {
   constructor() {
@@ -1001,6 +1001,16 @@ class AppController {
     this.faceBtnBack = document.getElementById('face-btn-back');
     this.faceBtnBackground = document.getElementById('face-btn-background');
 
+    // GitHub Actions tracking elements
+    this.faceGhActionsArea = document.getElementById('face-gh-actions-area');
+    this.faceGhRuntime = document.getElementById('face-gh-runtime');
+    this.faceGhLogLink = document.getElementById('face-gh-log-link');
+    this.faceGhRefreshBtn = document.getElementById('face-gh-refresh-btn');
+    this.faceBtnStartBrowserAi = document.getElementById('face-btn-start-browser-ai');
+    this.faceNoScanArea = document.getElementById('face-no-scan-area');
+    this.faceBtnTriggerBrowserAi = document.getElementById('face-btn-trigger-browser-ai');
+    this.ghActionsPollTimer = null;
+
     // Clusters step elements
     this.faceStepClusters = document.getElementById('face-step-clusters');
     this.faceClustersGrid = document.getElementById('face-clusters-grid');
@@ -1055,6 +1065,24 @@ class AppController {
       this.showFaceStep('pick');
       this.renderFacePickerGrid();
     });
+
+    this.faceGhRefreshBtn?.addEventListener('click', () => {
+      this.checkAndHandleGitHubActions(true);
+    });
+
+    this.faceBtnStartBrowserAi?.addEventListener('click', () => {
+      if (this.ghActionsPollTimer) {
+        clearInterval(this.ghActionsPollTimer);
+        this.ghActionsPollTimer = null;
+      }
+      if (this.faceGhActionsArea) this.faceGhActionsArea.classList.add('hidden');
+      this.startAutoClusterScan();
+    });
+
+    this.faceBtnTriggerBrowserAi?.addEventListener('click', () => {
+      if (this.faceNoScanArea) this.faceNoScanArea.classList.add('hidden');
+      this.startAutoClusterScan();
+    });
   }
 
   minimizeFaceModal() {
@@ -1072,18 +1100,181 @@ class AppController {
     document.body.style.overflow = 'hidden';
   }
 
-  openFaceModal() {
+  async openFaceModal() {
     this.faceModal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+
+    // 1. Nếu đã có dữ liệu cụm người trong bộ nhớ
     if (this.faceClusters && this.faceClusters.length > 0) {
       this.showFaceStep('clusters');
       this.renderFaceClustersGrid();
-    } else {
-      this.startAutoClusterScan();
+      return;
+    }
+
+    // 2. Thử nạp lại file faces_<slug>.json từ GitHub Pages nếu vừa hoàn thành
+    const hasClusters = await this.loadCachedClusters();
+    if (hasClusters && this.faceClusters && this.faceClusters.length > 0) {
+      this.showFaceStep('clusters');
+      this.renderFaceClustersGrid();
+      return;
+    }
+
+    // 3. Chưa có kết quả: Hiển thị giao diện kiểm tra GitHub Actions
+    this.showFaceStep('scan');
+    this.checkAndHandleGitHubActions();
+  }
+
+  async checkGitHubActionsStatus() {
+    try {
+      const res = await fetch('https://api.github.com/repos/hoangdiep99/DIPchonanh/actions/runs?event=workflow_dispatch&per_page=1', {
+        headers: { Accept: 'application/vnd.github.v3+json' },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.workflow_runs && data.workflow_runs.length > 0) {
+        return data.workflow_runs[0];
+      }
+    } catch (e) {
+      console.warn('Lỗi kiểm tra GitHub Actions status:', e);
+    }
+    return null;
+  }
+
+  async checkAndHandleGitHubActions(forceManual = false) {
+    if (this.faceGhActionsArea) this.faceGhActionsArea.classList.add('hidden');
+    if (this.faceNoScanArea) this.faceNoScanArea.classList.add('hidden');
+
+    this.updateFaceScanUI({
+      percent: 10,
+      statusTitle: 'Đang kiểm tra tiến trình GitHub Actions...',
+      statusDesc: 'Đang kết nối máy chủ GitHub Cloud kiểm tra trạng thái AI...',
+      badge: 'Kiểm tra',
+      badgeType: 'info',
+      scanned: 0,
+      total: this.allPhotos ? this.allPhotos.length : 0,
+      faces: 0,
+      clusters: 0,
+    });
+
+    const hasClusters = await this.loadCachedClusters();
+    if (hasClusters && this.faceClusters && this.faceClusters.length > 0) {
+      this.showFaceStep('clusters');
+      this.renderFaceClustersGrid();
+      this.showToast('Đã tải thành công danh sách khuôn mặt từ GitHub!', 'success');
+      return;
+    }
+
+    try {
+      const run = await this.checkGitHubActionsStatus();
+      if (run && (run.status === 'in_progress' || run.status === 'queued')) {
+        this.renderGitHubActionsRunning(run);
+      } else {
+        this.renderNoGitHubActionsRunning(run);
+      }
+    } catch (err) {
+      console.warn('Lỗi kiểm tra GitHub Actions:', err);
+      this.renderNoGitHubActionsRunning(null);
     }
   }
 
+  renderGitHubActionsRunning(run) {
+    const startTime = new Date(run.created_at).getTime();
+    const elapsedMinutes = Math.max(1, Math.round((Date.now() - startTime) / 60000));
+    const totalPhotos = this.allPhotos ? this.allPhotos.length : 0;
+
+    if (this.faceGhActionsArea) this.faceGhActionsArea.classList.remove('hidden');
+    if (this.faceNoScanArea) this.faceNoScanArea.classList.add('hidden');
+    if (this.faceGhLogLink) this.faceGhLogLink.href = run.html_url;
+    if (this.faceGhRuntime) {
+      this.faceGhRuntime.textContent = `⚡ Máy chủ Cloud đã chạy: ${elapsedMinutes} phút (Bắt đầu: ${new Date(run.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})`;
+    }
+
+    const estimatedPct = Math.min(95, Math.max(15, Math.round((elapsedMinutes / 60) * 100)));
+
+    this.updateFaceScanUI({
+      percent: estimatedPct,
+      statusTitle: 'InsightFace (ArcFace 99.8%) Đang Quét Trên GitHub Actions',
+      statusDesc: `Hệ thống siêu máy chủ Cloud đang quét nhận diện toàn bộ ${totalPhotos} ảnh. Bạn có thể bấm nút bên dưới để xem nhật ký trực tiếp hoặc đợi hệ thống tự động đồng bộ kết quả.`,
+      badge: `☁️ GitHub Actions (${elapsedMinutes}m)`,
+      badgeType: 'active',
+      scanned: Math.round((estimatedPct / 100) * totalPhotos),
+      total: totalPhotos,
+      faces: '--',
+      clusters: '--',
+    });
+
+    if (this.ghActionsPollTimer) clearInterval(this.ghActionsPollTimer);
+    this.ghActionsPollTimer = setInterval(async () => {
+      if (document.visibilityState !== 'visible' || !this.faceModal || this.faceModal.classList.contains('hidden')) return;
+
+      const loaded = await this.loadCachedClusters();
+      if (loaded && this.faceClusters && this.faceClusters.length > 0) {
+        clearInterval(this.ghActionsPollTimer);
+        this.ghActionsPollTimer = null;
+        this.showToast('🎉 GitHub Actions đã quét xong toàn bộ album!', 'success');
+        this.showFaceStep('clusters');
+        this.renderFaceClustersGrid();
+        return;
+      }
+
+      const updatedRun = await this.checkGitHubActionsStatus();
+      if (updatedRun) {
+        if (updatedRun.status === 'completed') {
+          clearInterval(this.ghActionsPollTimer);
+          this.ghActionsPollTimer = null;
+          if (updatedRun.conclusion === 'success') {
+            await this.loadCachedClusters();
+            this.showToast('🎉 GitHub Actions vừa quét xong! Đang nạp danh sách...', 'success');
+            this.showFaceStep('clusters');
+            this.renderFaceClustersGrid();
+          } else {
+            this.renderNoGitHubActionsRunning(updatedRun);
+          }
+        } else {
+          const nowElapsed = Math.max(1, Math.round((Date.now() - new Date(updatedRun.created_at).getTime()) / 60000));
+          if (this.faceGhRuntime) {
+            this.faceGhRuntime.textContent = `⚡ Máy chủ Cloud đã chạy: ${nowElapsed} phút`;
+          }
+          const nowPct = Math.min(95, Math.max(15, Math.round((nowElapsed / 60) * 100)));
+          if (this.faceScanPercentText) this.faceScanPercentText.textContent = `${nowPct}%`;
+          if (this.faceScanProgressFill) this.faceScanProgressFill.style.width = `${nowPct}%`;
+          if (this.faceScanBadge) this.faceScanBadge.textContent = `☁️ GitHub Actions (${nowElapsed}m)`;
+        }
+      }
+    }, 12000);
+  }
+
+  renderNoGitHubActionsRunning(run) {
+    if (this.ghActionsPollTimer) {
+      clearInterval(this.ghActionsPollTimer);
+      this.ghActionsPollTimer = null;
+    }
+    if (this.faceGhActionsArea) this.faceGhActionsArea.classList.add('hidden');
+    if (this.faceNoScanArea) this.faceNoScanArea.classList.remove('hidden');
+
+    const totalPhotos = this.allPhotos ? this.allPhotos.length : 0;
+    const isFailed = run && run.conclusion === 'failure';
+
+    this.updateFaceScanUI({
+      percent: 0,
+      statusTitle: isFailed ? 'Tiến trình GitHub Actions trước đó gặp lỗi' : 'Chưa có dữ liệu khuôn mặt sẵn cho album này',
+      statusDesc: isFailed
+        ? 'Tiến trình quét trên GitHub Actions trước đó bị gián đoạn. Bạn có thể bấm quét ngay bằng AI Web trình duyệt dưới đây.'
+        : 'Album này chưa có dữ liệu quét sẵn. Bạn có thể chọn quét nhanh bằng AI Web trên máy hoặc mở GitHub Actions để quét chuẩn ArcFace (99.8%).',
+      badge: isFailed ? 'Lỗi GitHub' : 'Chưa quét',
+      badgeType: isFailed ? 'warning' : 'info',
+      scanned: 0,
+      total: totalPhotos,
+      faces: 0,
+      clusters: 0,
+    });
+  }
+
   closeFaceModal() {
+    if (this.ghActionsPollTimer) {
+      clearInterval(this.ghActionsPollTimer);
+      this.ghActionsPollTimer = null;
+    }
     this.faceModal.classList.add('hidden');
     document.body.style.overflow = '';
     if (this.faceFloatingPill) this.faceFloatingPill.classList.add('hidden');
