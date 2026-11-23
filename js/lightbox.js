@@ -460,10 +460,8 @@ export class LightboxModal {
         if (token !== this.activeLoadToken) return;
         this.imgEl.src = loaded.src;
         this.loaderEl.classList.add('hidden');
-        // Nếu người dùng đã zoom trước khi tải xong thì nâng cấp lên nét gốc ngay
-        if (this.scale > 1.25) {
-          this.ensureSuperResolution();
-        }
+        // Tự động nâng cấp lên ảnh gốc độ nét cao (=s0) để ảnh luôn sắc nét và ấn giữ lưu được ảnh to
+        this.ensureSuperResolution();
       });
     } else {
       this.loaderEl.classList.add('hidden');

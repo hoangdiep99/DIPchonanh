@@ -1749,14 +1749,31 @@ class AppController {
     }
   }
 
-  // --- Tải Ảnh Trực Tiếp Từng File JPG & Lưu Thẳng Vào Thư Viện Ảnh iPhone ---
-  async downloadSinglePhoto(photo) {
+  // --- Tải Ảnh Gốc 100% Nguyên Bản (20MB) & Lưu Vào Thư Viện ---
+  downloadOriginalFile(photo) {
     if (!photo) return;
     const fileName = photo.name && (photo.name.toLowerCase().endsWith('.jpg') || photo.name.toLowerCase().endsWith('.jpeg') || photo.name.toLowerCase().endsWith('.png'))
       ? photo.name
       : `${photo.name || photo.id}.jpg`;
 
-    this.showToast(`Đang chuẩn bị ảnh ${fileName}...`, 'info');
+    this.showToast(`Đang tải file gốc ${fileName} (dung lượng gốc 100%)...`, 'info');
+    // Link trực tiếp tải file gốc đầy đủ từ Google Drive (20MB không bị nén)
+    const directDownloadUrl = `https://drive.usercontent.google.com/download?id=${photo.id}&export=download&authuser=0`;
+    const a = document.createElement('a');
+    a.href = directDownloadUrl;
+    a.download = fileName;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 2000);
+    this.showToast(`✅ Đang tải file gốc ${fileName} từ Google Drive!`, 'success');
+  }
+
+  async saveToCameraRoll(photo) {
+    if (!photo) return;
+    const fileName = photo.name && (photo.name.toLowerCase().endsWith('.jpg') || photo.name.toLowerCase().endsWith('.jpeg')) ? photo.name : `${photo.name || photo.id}.jpg`;
+    this.showToast(`Đang chuẩn bị ảnh lưu vào Thư viện...`, 'info');
     const directUrl = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
 
     try {
@@ -1764,47 +1781,28 @@ class AppController {
       if (!res.ok) throw new Error('Fetch status ' + res.status);
       const originalBlob = await res.blob();
 
-      // Tối ưu số 1 cho iPhone / iPad (iOS Safari):
-      // Dùng Web Share API để mở menu iOS, có sẵn nút "Lưu hình ảnh" lưu THẲNG vào Thư viện ảnh (Photos)!
       if (navigator.canShare && typeof File === 'function') {
-        try {
-          const file = new File([originalBlob], fileName, { type: 'image/jpeg' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: fileName,
-            });
-            this.showToast(`✅ Bạn chọn "Lưu hình ảnh" để lưu thẳng vào Thư viện ảnh nhé!`, 'success');
-            return;
-          }
-        } catch (shareErr) {
-          if (shareErr.name === 'AbortError') return; // Người dùng đóng menu chia sẻ
-          console.warn('Share API error, fallback to direct download:', shareErr);
+        const file = new File([originalBlob], fileName, { type: 'image/jpeg' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: fileName,
+          });
+          this.showToast(`✅ Bạn chọn "Lưu hình ảnh" để lưu thẳng vào Cuộn camera!`, 'success');
+          return;
         }
       }
 
-      // Phương thức tải file nhị phân trực tiếp (Máy tính, Android, v.v.)
-      const downloadBlob = new Blob([originalBlob], { type: 'application/octet-stream' });
-      const blobUrl = URL.createObjectURL(downloadBlob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      }, 2000);
-      this.showToast(`✅ Đã tải file ${fileName} về máy!`, 'success');
+      this.downloadOriginalFile(photo);
     } catch (err) {
-      console.warn('Lỗi tải trực tiếp blob, mở ảnh gốc:', err);
-      const w = window.open(directUrl, '_blank');
-      if (w) {
-        this.showToast(`Đã mở ảnh gốc, bạn nhấn giữ 1 giây vào ảnh rồi chọn "Lưu vào Ảnh" nhé!`, 'info');
-      } else {
-        window.location.href = directUrl;
-      }
+      if (err.name === 'AbortError') return;
+      this.downloadOriginalFile(photo);
     }
+  }
+
+  downloadSinglePhoto(photo) {
+    // Mặc định tải file gốc đầy đủ không nén từ Google Drive
+    this.downloadOriginalFile(photo);
   }
 
   async downloadMultiplePhotosDirect(photoList, label = 'ảnh đã chọn') {
@@ -1958,7 +1956,15 @@ class AppController {
       if (this.activeContextPhoto) {
         const p = this.activeContextPhoto;
         closeMenu();
-        this.downloadSinglePhoto(p);
+        this.downloadOriginalFile(p);
+      }
+    });
+
+    document.getElementById('ctx-btn-share-photos')?.addEventListener('click', () => {
+      if (this.activeContextPhoto) {
+        const p = this.activeContextPhoto;
+        closeMenu();
+        this.saveToCameraRoll(p);
       }
     });
   }
