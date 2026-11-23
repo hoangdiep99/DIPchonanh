@@ -34,6 +34,22 @@ function doGet(e) {
     var action = params.action || 'get_photos';
     var folderId = params.folderId || '';
 
+    // 0. Phân hệ Tra Cứu Link Ngắn Theo Tên Khách (?k=slug)
+    if (action === 'get_album') {
+      var slug = (params.slug || '').toLowerCase().trim();
+      var raw = PropertiesService.getScriptProperties().getProperty('album_' + slug);
+      if (raw) {
+        return jsonResponse({
+          status: 'success',
+          album: JSON.parse(raw)
+        });
+      }
+      return jsonResponse({
+        status: 'not_found',
+        message: 'Chưa có album cho mã này'
+      });
+    }
+
     if (!folderId) {
       return jsonResponse({
         status: 'error',
@@ -147,6 +163,16 @@ function doPost(e) {
   try {
     var rawData = e.postData.contents;
     var data = JSON.parse(rawData);
+
+    // 0. Phân hệ Lưu Danh Bạ Album Cho Link Ngắn (?k=slug)
+    if (data.action === 'save_album') {
+      var slug = (data.slug || '').toLowerCase().trim();
+      var albumData = data.albumData || {};
+      if (slug && albumData.folderId) {
+        PropertiesService.getScriptProperties().setProperty('album_' + slug, JSON.stringify(albumData));
+        return jsonResponse({ status: 'success', message: 'Đã lưu danh bạ album cho slug: ' + slug });
+      }
+    }
 
     // 1. Phân hệ Lưu Nháp Đa Thiết Bị lên đám mây
     if (data.action === 'save_sync') {

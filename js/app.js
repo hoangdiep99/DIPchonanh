@@ -84,8 +84,10 @@ class AppController {
     if (shortKey && !folder) {
       try {
         const history = JSON.parse(localStorage.getItem('studio_admin_history')) || [];
+        const defaultList = STUDIO_CONFIG.defaultAlbums || [];
+        const allList = [...defaultList, ...history];
         const normKey = shortKey.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-        const matched = history.find((h) => {
+        const matched = allList.find((h) => {
           const s = (h.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
           const c = (h.client || '').toLowerCase().replace(/[^a-z0-9]/g, '');
           return s === normKey || c === normKey;
@@ -93,9 +95,9 @@ class AppController {
         if (matched) {
           folder = matched.folderId;
           client = matched.client;
-          pkg = matched.pkg;
+          pkg = matched.pkg || 'Album Tiêu Chuẩn';
           limit = matched.limit || 0;
-          download = matched.download === 1;
+          download = matched.download !== 0;
         }
       } catch (e) {
         // ignore
@@ -366,9 +368,45 @@ class AppController {
     }
   }
 
+  updateHeaderAlbumInfo() {
+    if (this.headerClientName) this.headerClientName.textContent = this.clientName;
+    if (this.headerPackageName) this.headerPackageName.textContent = this.packageName;
+    if (this.headerLimitCount) {
+      this.headerLimitCount.textContent = this.limit > 0 ? `Định mức: ${this.limit} ảnh` : 'Định mức: Không giới hạn';
+    }
+  }
+
   async loadAlbumData(forceRefresh = false) {
     this.showState('loading', forceRefresh ? 'Đang tải lại danh sách ảnh mới nhất từ Google Drive...' : 'Đang kết nối thư mục Google Drive...');
     try {
+      if (!this.folderId) {
+        const params = new URLSearchParams(window.location.search);
+        const shortKey = params.get('k') || params.get('album');
+        if (shortKey) {
+          const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+          if (webhookUrl) {
+            try {
+              this.stateLoadingMsg.textContent = `Đang tìm album "${shortKey}"...`;
+              const res = await fetch(`${webhookUrl}?action=get_album&slug=${encodeURIComponent(shortKey.toLowerCase().trim())}`);
+              if (res.ok) {
+                const json = await res.json();
+                if (json && json.status === 'success' && json.album && json.album.folderId) {
+                  this.folderId = json.album.folderId;
+                  this.clientName = json.album.client || shortKey;
+                  this.packageName = json.album.pkg || 'Album Tiêu Chuẩn';
+                  this.limit = json.album.limit || 0;
+                  this.allowDownload = json.album.download !== 0;
+                  this.updateHeaderAlbumInfo();
+                  this.registerCurrentAlbumToAdminHistory();
+                }
+              }
+            } catch (e) {
+              console.warn('Lỗi tra cứu album từ webhook:', e);
+            }
+          }
+        }
+      }
+
       let data;
       if (this.folderId) {
         data = await loadDriveAlbum(

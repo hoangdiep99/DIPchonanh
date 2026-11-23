@@ -58,6 +58,15 @@ export const STUDIO_CONFIG = {
       download: 1,
       time: 'Album hiện tại',
     },
+    {
+      folderId: '1o4maN-z8SsUB3h-GLAUrK1DBjDbU7AlP',
+      client: 'Việt Phục',
+      pkg: 'Album Tiêu Chuẩn',
+      slug: 'viet-phuc',
+      limit: 0,
+      download: 1,
+      time: 'Album hiện tại',
+    },
   ],
 
   // Cấu hình Nhận diện khuôn mặt nhẹ trên trình duyệt (@vladmandic/human)

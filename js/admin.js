@@ -412,8 +412,8 @@ export class AdminManager {
 
     const baseOrigin = window.location.origin + window.location.pathname;
 
-    // 1. Link ngắn gọn theo tên khách (kèm mã f để mở được trên mọi điện thoại của khách hàng)
-    let shortUrl = `${baseOrigin}?k=${encodeURIComponent(slug)}&f=${encodeURIComponent(folderId)}`;
+    // 1. Link ngắn gọn siêu đẹp theo tên khách (Siêu ngắn, tiện gửi Zalo)
+    let shortUrl = `${baseOrigin}?k=${encodeURIComponent(slug)}`;
     if (limit > 0) shortUrl += `&limit=${limit}`;
 
     // 2. Link đầy đủ
@@ -462,6 +462,25 @@ export class AdminManager {
 
     const isEdit = this.editingIndex >= 0;
     this.saveHistory(historyItem);
+
+    // Tự động đẩy danh bạ album lên Webhook Google Sheets
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (webhookUrl) {
+      try {
+        fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'save_album',
+            slug,
+            albumData: { folderId, client, pkg, limit, download }
+          })
+        }).catch(() => {});
+      } catch (e) {
+        // ignore
+      }
+    }
 
     if (isEdit) {
       if (this.editingBanner) this.editingBanner.classList.add('hidden');
