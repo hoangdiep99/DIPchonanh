@@ -2,8 +2,8 @@
  * Phân hệ 3.2: Lưới ảnh Responsive Justified Grid giữ nguyên tỷ lệ khung hình gốc
  * (gap 8px trên mobile, 12px trên desktop) + Lazy Loading qua IntersectionObserver.
  */
-import { attachImageWithFallback } from './drive.js?v=8.3';
-import { ICONS } from './icons.js?v=8.3';
+import { attachImageWithFallback } from './drive.js?v=8.5';
+import { ICONS } from './icons.js?v=8.5';
 
 export class GalleryGrid {
   constructor(containerEl, callbacks) {
@@ -228,7 +228,7 @@ export class GalleryGrid {
     imgWrap.appendChild(img);
     this.observer.observe(img);
 
-    // Góc trên trái: Điểm nhận diện khuôn mặt + Biểu tượng ghi chú
+    // Góc trên trái: Điểm nhận diện khuôn mặt (nếu đang lọc mặt)
     const badgesLeft = document.createElement('div');
     badgesLeft.className = 'photo-badges-left';
 
@@ -239,17 +239,6 @@ export class GalleryGrid {
       scorePill.title = 'Độ tương đồng khuôn mặt';
       badgesLeft.appendChild(scorePill);
     }
-
-    const noteBadge = document.createElement('button');
-    noteBadge.type = 'button';
-    noteBadge.className = `note-badge-btn${hasNotes ? '' : ' hidden'}`;
-    noteBadge.title = 'Xem / sửa ghi chú ảnh';
-    noteBadge.innerHTML = `${ICONS.note}<span>Ghi chú</span>`;
-    noteBadge.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.callbacks.onOpenLightbox(index, true);
-    });
-    badgesLeft.appendChild(noteBadge);
 
     // Góc trên phải: Nút Kính Lúp (Xem To), Tim (Chọn) & Sao (Ưu tiên)
     const actions = document.createElement('div');
@@ -453,11 +442,6 @@ export class GalleryGrid {
     if (starBtn) {
       starBtn.classList.toggle('is-active', Boolean(sel.priority));
       starBtn.innerHTML = ICONS.star(Boolean(sel.priority));
-    }
-
-    const noteBadge = card.querySelector('.note-badge-btn');
-    if (noteBadge) {
-      noteBadge.classList.toggle('hidden', !this.hasNoteData(sel));
     }
 
     const redNoteBadge = card.querySelector('.card-note-red-badge');

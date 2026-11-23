@@ -5,7 +5,7 @@
  * - Gửi đơn về Google Sheets (qua Google Apps Script) và Telegram Bot.
  * - Xuất file văn bản / JSON / Tải báo cáo cho Studio.
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.3';
+import { STUDIO_CONFIG } from '../config.js?v=8.5';
 
 export const ExportService = {
   /**

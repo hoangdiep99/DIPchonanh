@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.3';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.3';
-import { GalleryGrid } from './gallery.js?v=8.3';
-import { LightboxModal } from './lightbox.js?v=8.3';
-import { StorageManager } from './storage.js?v=8.3';
-import { FaceFilterEngine } from './face-filter.js?v=8.3';
-import { ExportService } from './export.js?v=8.3';
-import { AdminManager } from './admin.js?v=8.3';
+import { STUDIO_CONFIG } from '../config.js?v=8.5';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.5';
+import { GalleryGrid } from './gallery.js?v=8.5';
+import { LightboxModal } from './lightbox.js?v=8.5';
+import { StorageManager } from './storage.js?v=8.5';
+import { FaceFilterEngine } from './face-filter.js?v=8.5';
+import { ExportService } from './export.js?v=8.5';
+import { AdminManager } from './admin.js?v=8.5';
 
 class AppController {
   constructor() {
@@ -118,6 +118,37 @@ class AppController {
     const draft = StorageManager.loadDraft(this.folderId || 'demo');
     for (const [id, val] of Object.entries(draft)) {
       this.selectionsMap.set(id, val);
+    }
+
+    // Tự động lưu thông tin album này vào Quản lý Link của Admin
+    this.registerCurrentAlbumToAdminHistory();
+  }
+
+  registerCurrentAlbumToAdminHistory() {
+    if (!this.folderId) return;
+    try {
+      const ADMIN_STORAGE_KEY = 'studio_admin_history';
+      const history = JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY)) || [];
+      const baseOrigin = window.location.origin + window.location.pathname;
+      const slug = (new URLSearchParams(window.location.search).get('k') || this.clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-')).replace(/^-+|-+$/g, '');
+      const existing = history.find((h) => h.folderId === this.folderId || (slug && h.slug === slug));
+      if (!existing) {
+        history.push({
+          folderId: this.folderId,
+          client: this.clientName || 'doi cuoi tu son 21',
+          pkg: this.packageName || 'Album Tiêu Chuẩn',
+          slug: slug || 'doi-cuoi-tu-son-21',
+          limit: this.limit || 0,
+          download: this.allowDownload ? 1 : 0,
+          shortUrl: `${baseOrigin}?k=${encodeURIComponent(slug)}&f=${encodeURIComponent(this.folderId)}`,
+          link: `${baseOrigin}?k=${encodeURIComponent(slug)}&f=${encodeURIComponent(this.folderId)}`,
+          updatedAt: Date.now(),
+          time: 'Album hiện tại',
+        });
+        localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(history));
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -621,18 +652,6 @@ class AppController {
     this.updateCounters();
     this.updateSelectedToolbar();
     this.scheduleSaveDraft();
-
-    if (nextSelected && this.limit > 0) {
-      let selCount = 0;
-      for (const [id, s] of this.selectionsMap.entries()) {
-        if (s.selected) selCount++;
-      }
-      if (selCount > this.limit) {
-        const extra = selCount - this.limit;
-        const fee = extra * 25000;
-        this.showToast(`⚠️ Bạn đã chọn vượt định mức gói (+${extra} ảnh). Phí sửa thêm là 25.000 VNĐ / ảnh (+${fee.toLocaleString('vi-VN')} đ).`);
-      }
-    }
   }
 
   updateNote(photoId, noteText) {
@@ -648,18 +667,6 @@ class AppController {
     this.updateCounters();
     this.updateSelectedToolbar();
     this.scheduleSaveDraft();
-
-    if (nextSelected && this.limit > 0) {
-      let selCount = 0;
-      for (const [id, s] of this.selectionsMap.entries()) {
-        if (s.selected) selCount++;
-      }
-      if (selCount > this.limit) {
-        const extra = selCount - this.limit;
-        const fee = extra * 25000;
-        this.showToast(`⚠️ Bạn đã chọn vượt định mức gói (+${extra} ảnh). Phí sửa thêm là 25.000 VNĐ / ảnh (+${fee.toLocaleString('vi-VN')} đ).`);
-      }
-    }
   }
 
   scheduleSaveDraft() {
@@ -699,7 +706,7 @@ class AppController {
     } else {
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-      if (this.syncStatusText) this.syncStatusText.textContent = text || `Đã đồng bộ ${timeStr}`;
+      if (this.syncStatusText) this.syncStatusText.textContent = `Đã đồng bộ ${timeStr}`;
       this.btnCloudSync.title = `Đã đồng bộ đám mây lúc ${timeStr}. Bấm để đồng bộ ngay.`;
     }
   }
@@ -1405,15 +1412,20 @@ class AppController {
     });
 
     document.getElementById('btn-download-selected-zip')?.addEventListener('click', () => {
-      this.downloadSelectedZip();
+      this.downloadSelectedDirect();
     });
 
     document.getElementById('btn-download-all-zip')?.addEventListener('click', () => {
-      this.downloadAllZip();
+      this.downloadAllDirect();
     });
 
     document.getElementById('bar-btn-download-menu')?.addEventListener('click', () => {
-      this.openSubmitModal();
+      const selectedPhotos = this.allPhotos.filter((p) => this.getPhotoSelection(p.id).selected);
+      if (selectedPhotos.length > 0) {
+        this.downloadMultiplePhotosDirect(selectedPhotos, 'ảnh đã chọn');
+      } else {
+        this.showToast('Bạn chưa chọn ảnh nào! Hãy bấm tim ♥ vào các ảnh bạn thích để tải nhé.', 'info');
+      }
     });
   }
 
@@ -1699,27 +1711,33 @@ class AppController {
     }
   }
 
-  // --- Tải Ảnh Trực Tiếp & Nén File ZIP ---
+  // --- Tải Ảnh Trực Tiếp Từng File JPG (Không nén ZIP) ---
   async downloadSinglePhoto(photo) {
     if (!photo) return;
-    this.showToast(`Đang tải ảnh ${photo.name}...`, 'info');
+    const fileName = photo.name && (photo.name.toLowerCase().endsWith('.jpg') || photo.name.toLowerCase().endsWith('.jpeg') || photo.name.toLowerCase().endsWith('.png'))
+      ? photo.name
+      : `${photo.name || photo.id}.jpg`;
+
+    this.showToast(`Đang tải ảnh ${fileName}...`, 'info');
     const directUrl = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
 
     try {
       const res = await fetch(directUrl);
       if (!res.ok) throw new Error('Fetch status ' + res.status);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
+      const originalBlob = await res.blob();
+      // Ép kiểu application/octet-stream để trình duyệt (đặc biệt là Safari iPhone) tải file JPG về máy thay vì mở tab
+      const downloadBlob = new Blob([originalBlob], { type: 'application/octet-stream' });
+      const blobUrl = URL.createObjectURL(downloadBlob);
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = photo.name || `${photo.id}.jpg`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(blobUrl);
       }, 2000);
-      this.showToast(`✅ Đã tải ${photo.name} về máy!`, 'success');
+      this.showToast(`✅ Đã tải file ${fileName} về máy!`, 'success');
     } catch (err) {
       console.warn('Lỗi tải trực tiếp blob, mở ảnh gốc:', err);
       const w = window.open(directUrl, '_blank');
@@ -1731,76 +1749,75 @@ class AppController {
     }
   }
 
-  async downloadSelectedZip() {
-    const selectedPhotos = this.allPhotos.filter((p) => this.getPhotoSelection(p.id).selected);
-    if (selectedPhotos.length === 0) {
-      alert('Bạn chưa chọn bức ảnh nào để tải!');
+  async downloadMultiplePhotosDirect(photoList, label = 'ảnh đã chọn') {
+    if (!photoList || photoList.length === 0) {
+      alert(`Chưa có ${label} nào để tải!`);
       return;
     }
-    await this.createAndDownloadZip(selectedPhotos, `ChonAnh_${(this.clientName || 'Khach').replace(/\s+/g, '_')}`);
+
+    if (photoList.length > 25) {
+      if (!confirm(`Bạn đang chuẩn bị tải trực tiếp ${photoList.length} file ảnh JPG về máy. Tiếp tục?`)) {
+        return;
+      }
+    }
+
+    this.showToast(`Bắt đầu tải trực tiếp ${photoList.length} file ảnh JPG...`, 'info');
+    let loadedCount = 0;
+
+    for (const photo of photoList) {
+      loadedCount++;
+      const fileName = photo.name && (photo.name.toLowerCase().endsWith('.jpg') || photo.name.toLowerCase().endsWith('.jpeg') || photo.name.toLowerCase().endsWith('.png'))
+        ? photo.name
+        : `${photo.name || photo.id}.jpg`;
+
+      this.showToast(`Đang tải JPG (${loadedCount}/${photoList.length}): ${fileName}...`, 'info');
+
+      try {
+        const directUrl = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
+        const res = await fetch(directUrl);
+        if (res.ok) {
+          const originalBlob = await res.blob();
+          const downloadBlob = new Blob([originalBlob], { type: 'application/octet-stream' });
+          const blobUrl = URL.createObjectURL(downloadBlob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+          }, 2000);
+        }
+      } catch (err) {
+        console.warn(`Lỗi khi tải file ${fileName}:`, err);
+      }
+
+      if (loadedCount < photoList.length) {
+        // Nghỉ 400ms giữa các ảnh để trình duyệt tải tuần tự từng file JPG không bị chặn popup
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    }
+
+    this.showToast(`✅ Đã tải xong ${photoList.length} ảnh JPG trực tiếp về máy!`, 'success');
   }
 
-  async downloadAllZip() {
+  async downloadSelectedDirect() {
+    const selectedPhotos = this.allPhotos.filter((p) => this.getPhotoSelection(p.id).selected);
+    if (selectedPhotos.length === 0) {
+      alert('Bạn chưa chọn bức ảnh nào để tải! Hãy thả tim ♥ ảnh bạn muốn tải trước nhé.');
+      return;
+    }
+    await this.downloadMultiplePhotosDirect(selectedPhotos, 'ảnh đã chọn');
+  }
+
+  async downloadAllDirect() {
     if (!this.allPhotos || this.allPhotos.length === 0) {
       alert('Không có ảnh nào trong album để tải!');
       return;
     }
-    if (!confirm(`Bạn có muốn tải toàn bộ ${this.allPhotos.length} ảnh của album này về máy (.ZIP)?`)) return;
-    await this.createAndDownloadZip(this.allPhotos, `Album_${(this.clientName || 'Studio').replace(/\s+/g, '_')}`);
-  }
-
-  async createAndDownloadZip(photoList, zipFilename) {
-    if (typeof window.JSZip !== 'function') {
-      alert('Đang nạp bộ nén file, vui lòng thử lại sau giây lát!');
-      return;
-    }
-    const zip = new window.JSZip();
-    this.showToast(`Bắt đầu tải ${photoList.length} ảnh...`, 'info');
-
-    let loadedCount = 0;
-    const batchSize = 4;
-
-    for (let i = 0; i < photoList.length; i += batchSize) {
-      const batch = photoList.slice(i, i + batchSize);
-      await Promise.all(
-        batch.map(async (photo) => {
-          try {
-            const url = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error('Fetch failed');
-            const blob = await res.blob();
-            zip.file(photo.name, blob);
-          } catch (e) {
-            console.warn(`Không thể tải ${photo.name} vào ZIP:`, e);
-          } finally {
-            loadedCount++;
-            this.showToast(`Đang tải ảnh: ${loadedCount}/${photoList.length}...`, 'info');
-          }
-        })
-      );
-    }
-
-    this.showToast('Đang nén file .ZIP, vui lòng đợi trong giây lát...', 'info');
-    try {
-      const zipBlob = await zip.generateAsync({ type: 'blob' }, (metadata) => {
-        if (metadata.percent) {
-          this.showToast(`Đang đóng gói ZIP: ${Math.round(metadata.percent)}%...`, 'info');
-        }
-      });
-      const blobUrl = URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `${zipFilename}_${Date.now()}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      }, 3000);
-      this.showToast(`✅ Đã tải file nén ZIP thành công!`, 'success');
-    } catch (err) {
-      alert('Lỗi tạo file nén ZIP: ' + err.message);
-    }
+    if (!confirm(`Bạn có muốn tải trực tiếp toàn bộ ${this.allPhotos.length} ảnh JPG của album này về máy?`)) return;
+    await this.downloadMultiplePhotosDirect(this.allPhotos, 'toàn bộ album');
   }
 
   // --- Menu Ngữ Cảnh Khi Ấn Giữ Ảnh (Long-press) ---

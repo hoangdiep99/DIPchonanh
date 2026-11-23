@@ -5,8 +5,8 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.3';
-import { extractDriveFolderId } from './drive.js?v=8.3';
+import { STUDIO_CONFIG } from '../config.js?v=8.5';
+import { extractDriveFolderId } from './drive.js?v=8.5';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_REMEMBER_KEY = 'studio_admin_remember';
@@ -70,6 +70,27 @@ export class AdminManager {
         });
         hasNew = true;
       }
+    }
+
+    // Tự động kiểm tra URL hiện tại nếu đang mở một album
+    const params = new URLSearchParams(window.location.search);
+    const curFolder = params.get('folder') || params.get('f');
+    const curSlug = params.get('k') || params.get('album');
+    const curClient = params.get('khach') || curSlug || 'doi cuoi tu son 21';
+    if (curFolder && !saved.some((item) => item.folderId === curFolder || (curSlug && item.slug === curSlug))) {
+      saved.push({
+        folderId: curFolder,
+        client: curClient.replace(/[-_]+/g, ' '),
+        pkg: params.get('goi') || 'Album Tiêu Chuẩn',
+        slug: curSlug || toSlug(curClient),
+        limit: parseInt(params.get('limit'), 10) || 0,
+        download: params.get('download') !== '0' ? 1 : 0,
+        shortUrl: `${baseOrigin}?k=${encodeURIComponent(curSlug || toSlug(curClient))}&f=${encodeURIComponent(curFolder)}`,
+        link: `${baseOrigin}?k=${encodeURIComponent(curSlug || toSlug(curClient))}&f=${encodeURIComponent(curFolder)}`,
+        updatedAt: Date.now(),
+        time: 'Album hiện tại',
+      });
+      hasNew = true;
     }
 
     if (hasNew) {
@@ -162,6 +183,7 @@ export class AdminManager {
     if (this.panelContent) this.panelContent.classList.toggle('hidden', !isAuthed);
 
     if (isAuthed) {
+      this.history = this.loadHistory();
       this.renderPresets();
       this.renderHistory();
     }
