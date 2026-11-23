@@ -39,6 +39,8 @@ class AppController {
     this.saveDraftTimer = null;
     this.cloudSyncDebounceTimer = null;
     this.isSyncing = false;
+    this.lastLocalActionTime = 0;
+    this.lastCloudUpdatedAt = 0;
 
     this.init();
   }
@@ -128,12 +130,19 @@ class AppController {
     this.btnCloudSync?.addEventListener('click', () => this.syncCloudNow(true));
     this.barBtnRefresh?.addEventListener('click', () => this.refreshAlbum());
 
-    // Định kỳ 45s kéo dữ liệu chọn ảnh mới nhất từ máy khác khi đang mở trang
+    // Tự động kiểm tra và đồng bộ từ đám mây mỗi 5 giây
     setInterval(() => {
       if (document.visibilityState === 'visible' && this.folderId && !this.isSyncing) {
-        this.syncCloudNow(false);
+        this.pullCloudChanges(false);
       }
-    }, 45000);
+    }, 5000);
+
+    // Kéo dữ liệu ngay khi người dùng chuyển tab quay lại trang web
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this.folderId && !this.isSyncing) {
+        this.pullCloudChanges(false);
+      }
+    });
 
     this.folderTabsEl = document.getElementById('folder-tabs');
     this.searchInput = document.getElementById('search-input');
@@ -351,7 +360,7 @@ class AppController {
       }
 
       // Kéo dữ liệu nháp mới nhất từ các thiết bị khác (chạy nền)
-      this.syncCloudNow(false);
+      await this.pullCloudChanges(false);
     } catch (err) {
       console.error('Lỗi nạp album:', err);
       let msg = err.message || 'Không thể truy cập Google Drive.';
@@ -511,6 +520,7 @@ class AppController {
   }
 
   toggleHeart(photoId) {
+    this.lastLocalActionTime = Date.now();
     const cur = this.getPhotoSelection(photoId);
     const nextSelected = !cur.selected;
     // Nếu bỏ chọn thì tự động hủy luôn ưu tiên để logic chặt chẽ
@@ -520,6 +530,7 @@ class AppController {
       ...cur,
       selected: nextSelected,
       priority: nextPriority,
+      updatedAt: Date.now(),
     });
 
     this.galleryGrid.updateCardState(photoId, this.getPhotoSelection(photoId));
@@ -528,6 +539,7 @@ class AppController {
   }
 
   toggleStar(photoId) {
+    this.lastLocalActionTime = Date.now();
     const cur = this.getPhotoSelection(photoId);
     const nextPriority = !cur.priority;
     // Nếu đánh dấu ưu tiên thì tự động kích hoạt chọn
@@ -537,6 +549,7 @@ class AppController {
       ...cur,
       selected: nextSelected,
       priority: nextPriority,
+      updatedAt: Date.now(),
     });
 
     this.galleryGrid.updateCardState(photoId, this.getPhotoSelection(photoId));
@@ -545,16 +558,17 @@ class AppController {
   }
 
   toggleTag(photoId, tag) {
+    this.lastLocalActionTime = Date.now();
     const cur = this.getPhotoSelection(photoId);
     const set = new Set(cur.tags || []);
     if (set.has(tag)) {
       set.delete(tag);
     } else {
       set.add(tag);
-      // Gắn tag cũng tự động chọn ảnh nếu chưa chọn
       cur.selected = true;
     }
     cur.tags = Array.from(set);
+    cur.updatedAt = Date.now();
 
     this.selectionsMap.set(photoId, { ...cur });
     this.galleryGrid.updateCardState(photoId, this.getPhotoSelection(photoId));
@@ -563,11 +577,13 @@ class AppController {
   }
 
   updateNote(photoId, noteText) {
+    this.lastLocalActionTime = Date.now();
     const cur = this.getPhotoSelection(photoId);
     cur.note = noteText;
     if (noteText.trim()) {
       cur.selected = true;
     }
+    cur.updatedAt = Date.now();
     this.selectionsMap.set(photoId, { ...cur });
     this.galleryGrid.updateCardState(photoId, this.getPhotoSelection(photoId));
     this.updateCounters();
@@ -583,9 +599,9 @@ class AppController {
       StorageManager.saveDraft(this.folderId || 'demo', this.selectionsMap);
       this.draftIndicator.textContent = 'Đã lưu tự động';
       this.draftIndicator.classList.add('is-saved');
-    }, 350);
+    }, 300);
 
-    // Tự động đồng bộ lên đám mây (Cloud Sync) sau 1.2s không thao tác
+    // Tự động đẩy lên đám mây (Cloud Sync) sau 800ms
     const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
     if (webhookUrl && this.folderId) {
       if (this.cloudSyncDebounceTimer) clearTimeout(this.cloudSyncDebounceTimer);
@@ -593,7 +609,8 @@ class AppController {
       this.cloudSyncDebounceTimer = setTimeout(async () => {
         const ok = await StorageManager.saveCloudDraft(webhookUrl, this.folderId, this.clientName, this.selectionsMap);
         this.setCloudSyncStatus(ok ? 'synced' : 'error', ok ? 'Đã đồng bộ' : 'Lỗi đồng bộ');
-      }, 1200);
+        if (ok) this.lastCloudUpdatedAt = Date.now();
+      }, 800);
     }
   }
 
@@ -612,56 +629,91 @@ class AppController {
     }
   }
 
-  async syncCloudNow(showToastMsg = true) {
+  async pullCloudChanges(showToastMsg = false) {
     if (this.isSyncing) return;
     const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
-    if (!webhookUrl || !this.folderId) {
-      if (showToastMsg) this.showToast('Chưa cấu hình Google Apps Script Web App để đồng bộ.');
-      return;
-    }
+    if (!webhookUrl || !this.folderId) return;
 
     this.isSyncing = true;
-    this.setCloudSyncStatus('syncing', 'Đang đồng bộ...');
     try {
-      // 1. Kéo dữ liệu mới nhất từ đám mây về
       const cloudResult = await StorageManager.fetchCloudDraft(webhookUrl, this.folderId);
-      let changed = false;
-      if (cloudResult && cloudResult.draft) {
-        const localDraft = StorageManager.loadDraft(this.folderId);
-        const merged = StorageManager.mergeDrafts(localDraft, cloudResult.draft);
-        for (const [id, item] of Object.entries(merged)) {
+      if (!cloudResult || !cloudResult.draft) return;
+
+      const cloudDraft = cloudResult.draft;
+      const cloudTime = cloudResult.updatedAt || 0;
+
+      // Chỉ cập nhật nếu đám mây có thời gian mới hơn thao tác cục bộ gần nhất (hoặc là lần đầu nạp)
+      if (cloudTime > this.lastLocalActionTime || this.lastCloudUpdatedAt === 0) {
+        let changed = false;
+
+        // 1. Kiểm tra các ảnh đang chọn ở local: nếu trên đám mây đã BỎ CHỌN thì hủy chọn ngay ở local
+        for (const [id, localItem] of this.selectionsMap.entries()) {
+          const cloudItem = cloudDraft[id];
+          if (!cloudItem || !cloudItem.selected) {
+            if (localItem.selected || localItem.priority) {
+              this.selectionsMap.set(id, {
+                ...localItem,
+                selected: false,
+                priority: false,
+                updatedAt: cloudTime,
+              });
+              this.galleryGrid?.updateCardState(id, this.selectionsMap.get(id));
+              changed = true;
+            }
+          }
+        }
+
+        // 2. Cập nhật các ảnh đang chọn trên đám mây
+        for (const [id, cloudItem] of Object.entries(cloudDraft)) {
           const current = this.selectionsMap.get(id);
-          if (!current || current.selected !== item.selected || current.priority !== item.priority || current.note !== item.note) {
+          const isSel = Boolean(cloudItem.selected);
+          const isPri = Boolean(cloudItem.priority);
+          const note = cloudItem.note || '';
+
+          if (!current || current.selected !== isSel || current.priority !== isPri || current.note !== note) {
             this.selectionsMap.set(id, {
-              selected: Boolean(item.selected),
-              priority: Boolean(item.priority),
-              tags: item.tags || [],
-              note: item.note || '',
-              updatedAt: item.updatedAt || Date.now(),
+              selected: isSel,
+              priority: isPri,
+              tags: cloudItem.tags || [],
+              note: note,
+              updatedAt: cloudItem.updatedAt || cloudTime,
             });
             this.galleryGrid?.updateCardState(id, this.selectionsMap.get(id));
             changed = true;
           }
         }
-        StorageManager.saveDraft(this.folderId, this.selectionsMap);
-      }
 
-      // 2. Đẩy dữ liệu mới nhất của máy hiện tại lên
-      await StorageManager.saveCloudDraft(webhookUrl, this.folderId, this.clientName, this.selectionsMap);
-      
+        this.lastCloudUpdatedAt = cloudTime;
+        if (changed) {
+          StorageManager.saveDraft(this.folderId, this.selectionsMap);
+          this.updateCounters();
+          if (this.lightbox?.isOpen) {
+            this.lightbox.syncControls(true);
+          }
+          if (showToastMsg) {
+            this.showToast('✨ Đã cập nhật ảnh chọn mới từ thiết bị khác!');
+          }
+        }
+      }
       this.setCloudSyncStatus('synced', 'Đã đồng bộ');
-      this.updateCounters();
-      if (this.lightbox?.isOpen) {
-        this.lightbox.syncControls(true);
-      }
-      if (showToastMsg) {
-        this.showToast(changed ? '✨ Đã cập nhật ảnh chọn mới từ thiết bị khác!' : '☁️ Đã đồng bộ với các thiết bị khác!');
-      }
     } catch (err) {
-      console.warn('Lỗi đồng bộ đám mây:', err);
-      this.setCloudSyncStatus('error', 'Lỗi đồng bộ');
+      console.warn('Lỗi kéo dữ liệu đám mây:', err);
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  async syncCloudNow(showToastMsg = true) {
+    this.setCloudSyncStatus('syncing', 'Đang đồng bộ...');
+    await this.pullCloudChanges(showToastMsg);
+    // Sau khi kéo, nếu local có thao tác mới hơn đám mây thì đẩy lên
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (webhookUrl && this.folderId && this.lastLocalActionTime > this.lastCloudUpdatedAt) {
+      await StorageManager.saveCloudDraft(webhookUrl, this.folderId, this.clientName, this.selectionsMap);
+    }
+    this.setCloudSyncStatus('synced', 'Đã đồng bộ');
+    if (showToastMsg) {
+      this.showToast('☁️ Đã đồng bộ với đám mây!');
     }
   }
 
