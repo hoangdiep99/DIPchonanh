@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=9.4">
+  <link rel="stylesheet" href="css/styles.css?v=9.5">
 </head>
 <body>
 
@@ -335,15 +335,63 @@
           </div>
         </div>
 
-        <!-- Bước 3: Tiến trình quét AI -->
-        <div id="face-step-scan" class="face-step-pane hidden" style="text-align:center;padding:20px 0;">
-          <div class="spinner"></div>
-          <h3 id="face-scan-status-title" style="margin:14px 0 6px;">Đang nạp mô hình AI...</h3>
-          <p id="face-scan-status-desc" style="font-size:13px;color:var(--ink-muted);margin:0 0 16px;">
-            Chỉ nạp 1 lần (~5MB) và lưu cache IndexedDB để các lần sau tức thì.
-          </p>
-          <div class="progress-track">
-            <div id="face-scan-progress-fill" class="progress-fill" style="width:0%;"></div>
+        <!-- Bước 3: Tiến trình quét AI Thời Gian Thực Siêu Đẹp -->
+        <div id="face-step-scan" class="face-step-pane hidden">
+          <div class="face-scan-box-card">
+            <div class="face-scan-header">
+              <div class="face-scan-radar-wrapper">
+                <div class="face-scan-radar-ring"></div>
+                <div class="face-scan-radar-core">⚡</div>
+              </div>
+              <div class="face-scan-header-text">
+                <div class="face-scan-title-row">
+                  <h3 id="face-scan-status-title">Đang quét nhận diện khuôn mặt...</h3>
+                  <span id="face-scan-badge" class="face-scan-badge badge-warning">Khởi động</span>
+                </div>
+                <p id="face-scan-status-desc">Hệ thống đang nạp mô hình AI và kiểm tra bộ nhớ đệm...</p>
+              </div>
+            </div>
+
+            <div class="face-scan-bar-section">
+              <div class="face-scan-percent-row">
+                <span class="face-scan-percent-label">Tiến trình phân tích AI</span>
+                <span id="face-scan-percent-text" class="face-scan-percent-val">0%</span>
+              </div>
+              <div class="face-scan-track">
+                <div id="face-scan-progress-fill" class="face-scan-fill" style="width:0%;"></div>
+              </div>
+            </div>
+
+            <div class="face-scan-stats-grid">
+              <div class="face-stat-item">
+                <span class="face-stat-icon">📸</span>
+                <div class="face-stat-meta">
+                  <span class="face-stat-num" id="face-stat-scanned-count">0 / 0</span>
+                  <span class="face-stat-label">Ảnh đã phân tích</span>
+                </div>
+              </div>
+              <div class="face-stat-item">
+                <span class="face-stat-icon">👤</span>
+                <div class="face-stat-meta">
+                  <span class="face-stat-num" id="face-stat-faces-count">0</span>
+                  <span class="face-stat-label">Khuôn mặt tìm thấy</span>
+                </div>
+              </div>
+              <div class="face-stat-item">
+                <span class="face-stat-icon">👥</span>
+                <div class="face-stat-meta">
+                  <span class="face-stat-num" id="face-stat-clusters-count">0</span>
+                  <span class="face-stat-label">Cụm người dự kiến</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="face-scan-tip">
+              <span class="face-scan-tip-icon">💡</span>
+              <span class="face-scan-tip-text">
+                Quá trình quét tận dụng GPU/WebGL trực tiếp trên thiết bị của bạn. Bạn có thể bấm <strong>"Ẩn bảng (Chạy ngầm)"</strong> bên dưới để vừa xem chọn ảnh vừa để AI tiếp tục quét trong nền!
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -873,6 +921,6 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=9.4"></script>
+  <script type="module" src="js/app.js?v=9.5"></script>
 </body>
 </html>

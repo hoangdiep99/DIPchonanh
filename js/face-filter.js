@@ -151,11 +151,25 @@ export class FaceFilterEngine {
    * @returns {Promise<Map<string, number>>} - Map photoId -> điểm tương đồng cao nhất
    */
   async scanAlbumForFace(photos, targetEmbedding, onProgress) {
+    onProgress?.({
+      phase: 'init_model',
+      current: 0,
+      total: photos.length,
+      matchesCount: 0,
+      msg: 'Đang khởi động AI so khớp...'
+    });
+
     const human = await this.initHuman();
     const batchSize = STUDIO_CONFIG.faceAI.batchSize || 6;
     const matchScores = new Map();
 
-    onProgress?.({ phase: 'cache_lookup', current: 0, total: photos.length });
+    onProgress?.({
+      phase: 'cache_lookup',
+      current: 0,
+      total: photos.length,
+      matchesCount: 0,
+      msg: 'Đang kiểm tra bộ nhớ đệm (IndexedDB)...'
+    });
 
     // 1. Kiểm tra cache IndexedDB
     const photoIds = photos.map((p) => p.id);
@@ -181,8 +195,23 @@ export class FaceFilterEngine {
       }
     }
 
+    let scanned = photos.length - pendingPhotos.length;
+    onProgress?.({
+      phase: pendingPhotos.length === 0 ? 'done' : 'cache_loaded',
+      current: scanned,
+      total: photos.length,
+      matchesCount: matchScores.size,
+      msg: scanned > 0 ? `Đã tìm thấy ${matchScores.size} ảnh khớp từ cache (${scanned}/${photos.length} ảnh)...` : 'Bắt đầu quét ảnh...'
+    });
+
     if (pendingPhotos.length === 0) {
-      onProgress?.({ phase: 'done', current: photos.length, total: photos.length });
+      onProgress?.({
+        phase: 'done',
+        current: photos.length,
+        total: photos.length,
+        matchesCount: matchScores.size,
+        msg: `Hoàn tất! Tìm thấy ${matchScores.size} ảnh có mặt người này.`
+      });
       return matchScores;
     }
 
@@ -195,6 +224,8 @@ export class FaceFilterEngine {
         current: scanned,
         total: photos.length,
         batchCount: batch.length,
+        matchesCount: matchScores.size,
+        msg: `Đang so khớp ảnh ${scanned + 1} - ${Math.min(scanned + batch.length, photos.length)} / ${photos.length}...`
       });
 
       await Promise.all(
@@ -235,11 +266,25 @@ export class FaceFilterEngine {
       );
 
       scanned += batch.length;
+      onProgress?.({
+        phase: 'ai_scanning',
+        current: scanned,
+        total: photos.length,
+        batchCount: batch.length,
+        matchesCount: matchScores.size,
+        msg: `Đã xử lý ${scanned}/${photos.length} ảnh (khớp ${matchScores.size} ảnh)...`
+      });
       // Nhường CPU cho UI phản hồi mượt mà
       await new Promise((r) => setTimeout(r, 16));
     }
 
-    onProgress?.({ phase: 'done', current: photos.length, total: photos.length });
+    onProgress?.({
+      phase: 'done',
+      current: photos.length,
+      total: photos.length,
+      matchesCount: matchScores.size,
+      msg: `Hoàn tất! Tìm thấy ${matchScores.size} ảnh có mặt người này.`
+    });
     return matchScores;
   }
 
@@ -251,6 +296,15 @@ export class FaceFilterEngine {
    * @returns {Promise<Array<{id, label, avatarUrl, photoCount, photoIds: Set, representativeEmbedding}>>}
    */
   async scanAndClusterAlbum(photos, onProgress, threshold = 0.52) {
+    onProgress?.({
+      phase: 'init_model',
+      current: 0,
+      total: photos.length,
+      foundFaces: 0,
+      clustersCount: 0,
+      msg: 'Đang khởi động mạng nơ-ron AI (WebGL / GPU)...'
+    });
+
     const human = await this.initHuman();
     const batchSize = STUDIO_CONFIG.faceAI.batchSize || 6;
 
@@ -278,8 +332,17 @@ export class FaceFilterEngine {
       }
     }
 
-    // 2. Quét các ảnh chưa lưu cache
     let scanned = photos.length - pendingPhotos.length;
+    onProgress?.({
+      phase: scanned === photos.length ? 'clustering' : 'cache_loaded',
+      current: scanned,
+      total: photos.length,
+      foundFaces: allDetected.length,
+      clustersCount: 0,
+      msg: scanned > 0 ? `Đã nạp ${scanned}/${photos.length} ảnh từ cache (${allDetected.length} khuôn mặt)` : 'Bắt đầu quét ảnh...'
+    });
+
+    // 2. Quét các ảnh chưa lưu cache
     if (pendingPhotos.length > 0) {
       for (let i = 0; i < pendingPhotos.length; i += batchSize) {
         const batch = pendingPhotos.slice(i, i + batchSize);
@@ -288,6 +351,9 @@ export class FaceFilterEngine {
           current: scanned,
           total: photos.length,
           batchCount: batch.length,
+          foundFaces: allDetected.length,
+          clustersCount: 0,
+          msg: `Đang quét ảnh ${scanned + 1} - ${Math.min(scanned + batch.length, photos.length)} / ${photos.length}...`
         });
 
         await Promise.all(
@@ -321,11 +387,28 @@ export class FaceFilterEngine {
         );
 
         scanned += batch.length;
+        onProgress?.({
+          phase: 'ai_scanning',
+          current: scanned,
+          total: photos.length,
+          batchCount: batch.length,
+          foundFaces: allDetected.length,
+          clustersCount: 0,
+          msg: `Đã xử lý ${scanned}/${photos.length} ảnh (${allDetected.length} khuôn mặt)...`
+        });
+
         await new Promise((r) => setTimeout(r, 16));
       }
     }
 
-    onProgress?.({ phase: 'clustering', current: photos.length, total: photos.length });
+    onProgress?.({
+      phase: 'clustering',
+      current: photos.length,
+      total: photos.length,
+      foundFaces: allDetected.length,
+      clustersCount: 0,
+      msg: 'Đang gom cụm và phân loại các khuôn mặt...'
+    });
 
     // 3. Thuật toán gom cụm khuôn mặt (Agglomerative Face Clustering)
     const clusters = [];
@@ -368,7 +451,14 @@ export class FaceFilterEngine {
       c.photoCount = c.photoIds.size;
     });
 
-    onProgress?.({ phase: 'done', current: photos.length, total: photos.length });
+    onProgress?.({
+      phase: 'done',
+      current: photos.length,
+      total: photos.length,
+      foundFaces: allDetected.length,
+      clustersCount: clusters.length,
+      msg: `Hoàn tất! Đã gom thành ${clusters.length} nhóm người.`
+    });
     return clusters;
   }
 }

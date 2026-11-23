@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.5';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=9.4';
-import { GalleryGrid } from './gallery.js?v=9.0';
-import { LightboxModal } from './lightbox.js?v=9.0';
-import { StorageManager } from './storage.js?v=8.5';
-import { FaceFilterEngine } from './face-filter.js?v=8.5';
-import { ExportService } from './export.js?v=8.5';
-import { AdminManager } from './admin.js?v=9.4';
+import { STUDIO_CONFIG } from '../config.js?v=9.5';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=9.5';
+import { GalleryGrid } from './gallery.js?v=9.5';
+import { LightboxModal } from './lightbox.js?v=9.5';
+import { StorageManager } from './storage.js?v=9.5';
+import { FaceFilterEngine } from './face-filter.js?v=9.5';
+import { ExportService } from './export.js?v=9.5';
+import { AdminManager } from './admin.js?v=9.5';
 
 class AppController {
   constructor() {
@@ -991,8 +991,13 @@ class AppController {
     this.faceSampleImg = document.getElementById('face-sample-img');
     this.faceBoxesOverlay = document.getElementById('face-boxes-overlay');
     this.faceScanProgressFill = document.getElementById('face-scan-progress-fill');
+    this.faceScanPercentText = document.getElementById('face-scan-percent-text');
     this.faceScanStatusTitle = document.getElementById('face-scan-status-title');
     this.faceScanStatusDesc = document.getElementById('face-scan-status-desc');
+    this.faceScanBadge = document.getElementById('face-scan-badge');
+    this.faceStatScannedCount = document.getElementById('face-stat-scanned-count');
+    this.faceStatFacesCount = document.getElementById('face-stat-faces-count');
+    this.faceStatClustersCount = document.getElementById('face-stat-clusters-count');
     this.faceBtnBack = document.getElementById('face-btn-back');
     this.faceBtnBackground = document.getElementById('face-btn-background');
 
@@ -1101,27 +1106,126 @@ class AppController {
     if (step === 'scan') sub.textContent = 'Hệ thống đang quét toàn bộ ảnh...';
   }
 
+  updateFaceScanUI({ percent = 0, statusTitle = '', statusDesc = '', badge = '', badgeType = 'info', scanned = 0, total = 0, faces = 0, clusters = 0 }) {
+    if (this.faceScanProgressFill) {
+      this.faceScanProgressFill.style.width = `${percent}%`;
+    }
+    if (this.faceScanPercentText) {
+      this.faceScanPercentText.textContent = `${percent}%`;
+    }
+    if (statusTitle && this.faceScanStatusTitle) {
+      this.faceScanStatusTitle.textContent = statusTitle;
+    }
+    if (statusDesc && this.faceScanStatusDesc) {
+      this.faceScanStatusDesc.textContent = statusDesc;
+    }
+    if (badge && this.faceScanBadge) {
+      this.faceScanBadge.textContent = badge;
+      this.faceScanBadge.className = `face-scan-badge badge-${badgeType}`;
+    }
+    if (this.faceStatScannedCount) {
+      this.faceStatScannedCount.textContent = `${scanned} / ${total}`;
+    }
+    if (this.faceStatFacesCount) {
+      this.faceStatFacesCount.textContent = `${faces}`;
+    }
+    if (this.faceStatClustersCount) {
+      this.faceStatClustersCount.textContent = `${clusters}`;
+    }
+    if (this.facePillText && this.facePillFill) {
+      const faceText = faces > 0 ? ` • ${faces} mặt` : '';
+      this.facePillText.textContent = `Đang quét AI: ${scanned}/${total} (${percent}%)${faceText}`;
+      this.facePillFill.style.width = `${percent}%`;
+    }
+  }
+
   async startAutoClusterScan() {
     this.showFaceStep('scan');
-    this.faceScanStatusTitle.textContent = 'Đang tự động phát hiện và gom nhóm khuôn mặt...';
     this.isScanningFace = true;
+    const totalPhotos = this.allPhotos ? this.allPhotos.length : 0;
+    this.updateFaceScanUI({
+      percent: 0,
+      statusTitle: 'Đang khởi động AI...',
+      statusDesc: 'Nạp mô hình nhận diện khuôn mặt và kiểm tra bộ nhớ đệm cache...',
+      badge: 'Khởi động',
+      badgeType: 'warning',
+      scanned: 0,
+      total: totalPhotos,
+      faces: 0,
+      clusters: 0,
+    });
 
     try {
       const defaultThreshold = STUDIO_CONFIG.faceAI.defaultThreshold || 0.52;
       const clusters = await this.faceEngine.scanAndClusterAlbum(
         this.allPhotos,
         (p) => {
-          const pct = Math.round((p.current / (p.total || 1)) * 100);
-          this.faceScanProgressFill.style.width = `${pct}%`;
-          if (p.phase === 'clustering') {
-            this.faceScanStatusDesc.textContent = 'Đang phân tích các đặc trưng khuôn mặt khác nhau...';
-            if (this.facePillText) this.facePillText.textContent = 'Đang phân nhóm khuôn mặt...';
-          } else {
-            this.faceScanStatusDesc.textContent = `Đang xử lý ${p.current} / ${p.total} ảnh (đã lưu cache IndexedDB)...`;
-            if (this.facePillText && this.facePillFill) {
-              this.facePillText.textContent = `Đang quét AI: ${p.current} / ${p.total} ảnh (${pct}%)`;
-              this.facePillFill.style.width = `${pct}%`;
-            }
+          const total = p.total || totalPhotos || 1;
+          const current = p.current || 0;
+          const pct = Math.min(100, Math.round((current / total) * 100));
+          const faces = p.foundFaces || 0;
+          const clustCount = p.clustersCount || 0;
+
+          if (p.phase === 'init_model') {
+            this.updateFaceScanUI({
+              percent: 5,
+              statusTitle: 'Đang nạp mô hình AI...',
+              statusDesc: p.msg || 'Khởi động mạng nơ-ron WebGL/GPU...',
+              badge: 'Tải AI Model',
+              badgeType: 'warning',
+              scanned: 0,
+              total,
+              faces: 0,
+              clusters: 0,
+            });
+          } else if (p.phase === 'cache_loaded') {
+            this.updateFaceScanUI({
+              percent: pct,
+              statusTitle: 'Đang đọc bộ nhớ đệm (IndexedDB)...',
+              statusDesc: p.msg || `Đã nạp ${current}/${total} ảnh từ cache...`,
+              badge: 'Đọc Cache',
+              badgeType: 'info',
+              scanned: current,
+              total,
+              faces,
+              clusters: clustCount,
+            });
+          } else if (p.phase === 'ai_scanning') {
+            this.updateFaceScanUI({
+              percent: pct,
+              statusTitle: 'Đang quét & nhận diện khuôn mặt...',
+              statusDesc: p.msg || `Đang quét lô ảnh ${current}/${total}...`,
+              badge: 'Đang quét',
+              badgeType: 'active',
+              scanned: current,
+              total,
+              faces,
+              clusters: clustCount,
+            });
+          } else if (p.phase === 'clustering') {
+            this.updateFaceScanUI({
+              percent: 95,
+              statusTitle: 'Đang phân tích & gom nhóm người...',
+              statusDesc: p.msg || 'So sánh đặc trưng khuôn mặt các nhân vật...',
+              badge: 'Gom cụm AI',
+              badgeType: 'active',
+              scanned: total,
+              total,
+              faces,
+              clusters: clustCount,
+            });
+          } else if (p.phase === 'done') {
+            this.updateFaceScanUI({
+              percent: 100,
+              statusTitle: 'Hoàn tất quét & gom nhóm!',
+              statusDesc: p.msg || `Tìm thấy ${clustCount} nhóm người khác nhau.`,
+              badge: 'Hoàn tất',
+              badgeType: 'success',
+              scanned: total,
+              total,
+              faces,
+              clusters: clustCount,
+            });
           }
         },
         defaultThreshold
@@ -1133,7 +1237,7 @@ class AppController {
       this.renderPeopleBar();
       if (this.faceFloatingPill) this.faceFloatingPill.classList.add('hidden');
 
-      if (clusters.length === 0) {
+      if (!clusters || clusters.length === 0) {
         alert('Không tìm thấy khuôn mặt rõ nét nào trong album.');
         this.closeFaceModal();
         return;
@@ -1148,6 +1252,7 @@ class AppController {
       console.error(err);
       alert('Lỗi quét khuôn mặt: ' + err.message);
       this.closeFaceModal();
+    }
     }
   }
 
@@ -1394,21 +1499,54 @@ class AppController {
 
   async runFaceScan(samplePhoto, embedding, avatarUrl) {
     this.showFaceStep('scan');
-    this.faceScanStatusTitle.textContent = 'Đang quét toàn bộ album ảnh...';
     this.isScanningFace = true;
+    const totalPhotos = this.allPhotos ? this.allPhotos.length : 0;
+    this.updateFaceScanUI({
+      percent: 0,
+      statusTitle: 'Đang quét tìm kiếm theo khuôn mặt...',
+      statusDesc: 'Khởi động AI so khớp đặc trưng khuôn mặt mục tiêu...',
+      badge: 'Tìm kiếm',
+      badgeType: 'active',
+      scanned: 0,
+      total: totalPhotos,
+      faces: 1,
+      clusters: 1,
+    });
 
     try {
       const scores = await this.faceEngine.scanAlbumForFace(
         this.allPhotos,
         embedding,
         (p) => {
-          const pct = Math.round((p.current / (p.total || 1)) * 100);
-          this.faceScanProgressFill.style.width = `${pct}%`;
-          this.faceScanStatusDesc.textContent = `Đang xử lý ${p.current} / ${p.total} ảnh (đã lưu cache IndexedDB)...`;
+          const total = p.total || totalPhotos || 1;
+          const current = p.current || 0;
+          const pct = Math.min(100, Math.round((current / total) * 100));
+          const matches = p.matchesCount || 0;
 
-          if (this.facePillText && this.facePillFill) {
-            this.facePillText.textContent = `Đang quét AI: ${p.current} / ${p.total} ảnh (${pct}%)`;
-            this.facePillFill.style.width = `${pct}%`;
+          if (p.phase === 'init_model') {
+            this.updateFaceScanUI({
+              percent: 5,
+              statusTitle: 'Đang nạp mô hình AI...',
+              statusDesc: 'Chuẩn bị mô hình nhận diện khuôn mặt...',
+              badge: 'Nạp Model',
+              badgeType: 'warning',
+              scanned: 0,
+              total,
+              faces: 1,
+              clusters: 1,
+            });
+          } else {
+            this.updateFaceScanUI({
+              percent: pct,
+              statusTitle: 'Đang so khớp khuôn mặt trên từng ảnh...',
+              statusDesc: `Đã tìm thấy ${matches} ảnh khớp (${current}/${total} ảnh)...`,
+              badge: `Khớp ${matches} ảnh`,
+              badgeType: 'active',
+              scanned: current,
+              total,
+              faces: matches,
+              clusters: 1,
+            });
           }
         }
       );
@@ -2086,9 +2224,19 @@ class AppController {
   async handleSelfieFaceSearch(file) {
     this.openFaceModal();
     this.showFaceStep('scan');
-    this.faceScanStatusTitle.textContent = 'Đang nhận diện khuôn mặt bạn từ ảnh selfie...';
-    this.faceScanStatusDesc.textContent = 'AI đang trích xuất đặc trưng khuôn mặt của bạn...';
-    this.faceScanProgressFill.style.width = '20%';
+    this.isScanningFace = true;
+    const totalPhotos = this.allPhotos ? this.allPhotos.length : 0;
+    this.updateFaceScanUI({
+      percent: 15,
+      statusTitle: 'Đang nhận diện khuôn mặt bạn từ ảnh selfie...',
+      statusDesc: 'AI đang trích xuất đặc trưng khuôn mặt của bạn...',
+      badge: 'Chụp Selfie',
+      badgeType: 'warning',
+      scanned: 0,
+      total: totalPhotos,
+      faces: 1,
+      clusters: 1,
+    });
 
     try {
       const imgUrl = URL.createObjectURL(file);
@@ -2106,7 +2254,18 @@ class AppController {
         return;
       }
 
-      this.faceScanProgressFill.style.width = '50%';
+      this.updateFaceScanUI({
+        percent: 40,
+        statusTitle: 'Đã nhận diện khuôn mặt bạn!',
+        statusDesc: 'Đang chuẩn bị so khớp với toàn bộ album...',
+        badge: 'Đã nhận diện',
+        badgeType: 'active',
+        scanned: 0,
+        total: totalPhotos,
+        faces: 1,
+        clusters: 1,
+      });
+
       const face = faces[0];
 
       // Cắt ảnh avatar khuôn mặt selfie
@@ -2118,11 +2277,22 @@ class AppController {
       ctx.drawImage(imgEl, x, y, w, h, 0, 0, 120, 120);
       const avatarDataUrl = avatarCanvas.toDataURL('image/jpeg', 0.85);
 
-      this.faceScanStatusTitle.textContent = 'Đang tìm ảnh có mặt bạn trong sự kiện...';
       const scores = await this.faceEngine.scanAlbumForFace(this.allPhotos, face.embedding, (p) => {
-        const pct = Math.round(50 + (p.current / (p.total || 1)) * 50);
-        this.faceScanProgressFill.style.width = `${pct}%`;
-        this.faceScanStatusDesc.textContent = `Đang so khớp với ${p.current} / ${p.total} ảnh...`;
+        const total = p.total || totalPhotos || 1;
+        const current = p.current || 0;
+        const pct = Math.min(100, Math.round(40 + (current / total) * 60));
+        const matches = p.matchesCount || 0;
+        this.updateFaceScanUI({
+          percent: pct,
+          statusTitle: 'Đang tìm ảnh có khuôn mặt bạn...',
+          statusDesc: `Đã tìm thấy ${matches} ảnh có mặt bạn (${current}/${total} ảnh)...`,
+          badge: `Tìm thấy ${matches} ảnh`,
+          badgeType: 'active',
+          scanned: current,
+          total,
+          faces: matches,
+          clusters: 1,
+        });
       });
 
       this.faceScoresMap = scores;

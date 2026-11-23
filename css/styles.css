@@ -2859,3 +2859,250 @@ a {
   font-weight: 600;
   padding: 7px 14px;
 }
+
+/* ==========================================================================
+   Face Scan Modern Real-time Progress Dashboard (v9.5)
+   ========================================================================== */
+.face-scan-box-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: var(--bg-surface, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--border-hairline, #e4e4e7);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.face-scan-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+}
+
+.face-scan-radar-wrapper {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.face-scan-radar-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #3b82f6;
+  opacity: 0.7;
+  animation: radarPulse 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+.face-scan-radar-core {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+@keyframes radarPulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.face-scan-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.face-scan-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.face-scan-title-row h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-primary, #18181b);
+}
+
+.face-scan-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+}
+
+.face-scan-badge.badge-warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.face-scan-badge.badge-info {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.face-scan-badge.badge-active {
+  background: #ede9fe;
+  color: #6d28d9;
+  animation: pulseBadge 1.5s ease-in-out infinite;
+}
+
+.face-scan-badge.badge-success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+@keyframes pulseBadge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.97); }
+}
+
+#face-scan-status-desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-secondary, #52525b);
+  line-height: 1.4;
+}
+
+.face-scan-bar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.face-scan-percent-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.face-scan-percent-label {
+  color: var(--ink-secondary, #52525b);
+  font-weight: 500;
+}
+
+.face-scan-percent-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #3b82f6;
+  font-family: monospace, sans-serif;
+}
+
+.face-scan-track {
+  width: 100%;
+  height: 10px;
+  background: var(--bg-subtle, #f2f0eb);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.face-scan-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4, #10b981);
+  background-size: 200% 100%;
+  border-radius: 999px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: progressShimmer 2s linear infinite;
+}
+
+@keyframes progressShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.face-scan-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.face-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-page, #f8f7f4);
+  border-radius: 12px;
+  border: 1px solid var(--border-hairline, #e4e4e7);
+  text-align: left;
+}
+
+.face-stat-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.face-stat-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.face-stat-num {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-primary, #18181b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.face-stat-label {
+  font-size: 11px;
+  color: var(--ink-muted, #71717a);
+  white-space: nowrap;
+}
+
+.face-scan-tip {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  background: rgba(59, 130, 246, 0.08);
+  border-left: 3px solid #3b82f6;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-secondary, #52525b);
+}
+
+.face-scan-tip-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+@media (max-width: 480px) {
+  .face-scan-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .face-scan-header {
+    align-items: flex-start;
+  }
+}

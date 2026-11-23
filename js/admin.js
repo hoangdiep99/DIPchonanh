@@ -587,15 +587,29 @@ export class AdminManager {
       const clusters = await this.faceEngine.scanAndClusterAlbum(
         photos,
         (progress) => {
-          if (progress.phase === 'detecting') {
-            const pct = 25 + Math.round((progress.current / progress.total) * 65);
+          const total = progress.total || photos.length || 1;
+          const current = progress.current || 0;
+          const faces = progress.foundFaces || 0;
+          if (progress.phase === 'ai_scanning' || progress.phase === 'detecting') {
+            const pct = 25 + Math.round((current / total) * 65);
             if (this.scanBar) this.scanBar.style.width = `${pct}%`;
             if (this.scanPercent) this.scanPercent.textContent = `${pct}%`;
-            if (this.scanStatusText) this.scanStatusText.textContent = `🔍 Đang quét khuôn mặt: ${progress.current}/${progress.total} ảnh...`;
+            if (this.scanStatusText) {
+              this.scanStatusText.textContent = `🔍 Đang quét khuôn mặt: ${current}/${total} ảnh (đã tìm thấy ${faces} mặt)...`;
+            }
+          } else if (progress.phase === 'cache_loaded') {
+            const pct = 25 + Math.round((current / total) * 65);
+            if (this.scanBar) this.scanBar.style.width = `${pct}%`;
+            if (this.scanPercent) this.scanPercent.textContent = `${pct}%`;
+            if (this.scanStatusText) {
+              this.scanStatusText.textContent = `⚡ Đã nạp từ cache: ${current}/${total} ảnh (${faces} mặt)...`;
+            }
           } else if (progress.phase === 'clustering') {
             if (this.scanBar) this.scanBar.style.width = '95%';
             if (this.scanPercent) this.scanPercent.textContent = '95%';
-            if (this.scanStatusText) this.scanStatusText.textContent = '🧩 Đang phân tích và gom nhóm các nhân vật...';
+            if (this.scanStatusText) {
+              this.scanStatusText.textContent = `🧩 Đang gom cụm và phân loại các nhân vật (${faces} khuôn mặt)...`;
+            }
           }
         },
         STUDIO_CONFIG.faceAI.defaultThreshold || 0.52
