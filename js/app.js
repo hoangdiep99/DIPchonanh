@@ -1211,7 +1211,10 @@ class AppController {
     // 2. Dự phòng: Đọc từ bộ nhớ máy khách (LocalStorage)
     try {
       const key = `studio_clusters_${this.folderId || 'demo'}`;
-      const raw = localStorage.getItem(key);
+      let raw = localStorage.getItem(key);
+      if (!raw && slug) {
+        raw = localStorage.getItem(`studio_clusters_${slug}`);
+      }
       if (!raw) return;
       const data = JSON.parse(raw);
       if (Array.isArray(data) && data.length > 0) {

@@ -6,7 +6,8 @@
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
 import { STUDIO_CONFIG } from '../config.js?v=8.5';
-import { extractDriveFolderId } from './drive.js?v=8.5';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=8.5';
+import { FaceFilterEngine } from './face-filter.js?v=8.5';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_REMEMBER_KEY = 'studio_admin_remember';
@@ -287,6 +288,23 @@ export class AdminManager {
     this.btnCancelEdit?.addEventListener('click', () => {
       this.cancelEdit();
     });
+
+    // Panel Tiến trình Quét & Nhận diện Khuôn mặt AI
+    this.aiScanBox = this.container.querySelector('#admin-ai-scan-box');
+    this.scanBadge = this.container.querySelector('#admin-scan-badge');
+    this.scanBar = this.container.querySelector('#admin-scan-bar');
+    this.scanStatusText = this.container.querySelector('#admin-scan-status-text');
+    this.scanPercent = this.container.querySelector('#admin-scan-percent');
+    this.scanResultRow = this.container.querySelector('#admin-scan-result-row');
+    this.scanChipsList = this.container.querySelector('#admin-scan-chips-list');
+    this.scanOpenAlbumBtn = this.container.querySelector('#admin-scan-open-album-btn');
+    this.scanRestartBtn = this.container.querySelector('#admin-scan-restart-btn');
+
+    this.scanRestartBtn?.addEventListener('click', () => {
+      if (this.currentScanningFolderId) {
+        this.startAutoScanForAlbum(this.currentScanningFolderId, this.currentScanningSlug, true);
+      }
+    });
   }
 
   bindEvents() {
@@ -489,6 +507,177 @@ export class AdminManager {
     }
 
     this.resultWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Tự động kích hoạt AI quét & nhận diện khuôn mặt cho album này ngay lập tức
+    this.startAutoScanForAlbum(folderId, slug);
+  }
+
+  // --- HỆ THỐNG AI TỰ ĐỘNG QUÉT & GOM NHÓM KHUÔN MẶT TRONG ADMIN ---
+  async startAutoScanForAlbum(folderId, slug, force = false) {
+    if (!folderId) return;
+    this.currentScanningFolderId = folderId;
+    this.currentScanningSlug = slug;
+
+    if (!this.aiScanBox) return;
+    this.aiScanBox.classList.remove('hidden');
+    if (this.scanResultRow) this.scanResultRow.classList.add('hidden');
+    if (this.scanChipsList) this.scanChipsList.innerHTML = '';
+
+    // Kiểm tra xem đã có cache sẵn chưa (nếu không bấm quét lại)
+    const existingCache = localStorage.getItem(`studio_clusters_${folderId}`) || (slug ? localStorage.getItem(`studio_clusters_${slug}`) : null);
+    if (existingCache && !force) {
+      try {
+        const clusters = JSON.parse(existingCache);
+        if (Array.isArray(clusters) && clusters.length > 0) {
+          this.renderScanSuccess(clusters, slug);
+          return;
+        }
+      } catch (e) {}
+    }
+
+    this.isScanning = true;
+    if (this.scanBadge) {
+      this.scanBadge.textContent = 'Đang quét AI...';
+      this.scanBadge.style.background = '#e0f2fe';
+      this.scanBadge.style.color = '#0284c7';
+    }
+    if (this.scanBar) this.scanBar.style.width = '10%';
+    if (this.scanPercent) this.scanPercent.textContent = '10%';
+    if (this.scanStatusText) this.scanStatusText.textContent = '📡 Đang kết nối Google Drive tải danh sách ảnh...';
+
+    try {
+      // 1. Tải danh sách ảnh từ Google Drive
+      const albumData = await loadDriveAlbum(folderId, STUDIO_CONFIG.googleDriveApiKey, true);
+      const photos = albumData.photos || [];
+
+      if (photos.length === 0) {
+        if (this.scanBadge) {
+          this.scanBadge.textContent = 'Không có ảnh';
+          this.scanBadge.style.background = '#fee2e2';
+          this.scanBadge.style.color = '#dc2626';
+        }
+        if (this.scanBar) this.scanBar.style.width = '100%';
+        if (this.scanPercent) this.scanPercent.textContent = '100%';
+        if (this.scanStatusText) this.scanStatusText.textContent = '⚠️ Thư mục Google Drive này chưa có file ảnh nào.';
+        this.isScanning = false;
+        return;
+      }
+
+      if (this.scanBar) this.scanBar.style.width = '20%';
+      if (this.scanPercent) this.scanPercent.textContent = '20%';
+      if (this.scanStatusText) this.scanStatusText.textContent = `✅ Tìm thấy ${photos.length} ảnh. Đang khởi động AI...`;
+
+      // 2. Khởi tạo FaceFilterEngine
+      if (!this.faceEngine) {
+        this.faceEngine = new FaceFilterEngine();
+      }
+      await this.faceEngine.initHuman();
+
+      if (this.scanBar) this.scanBar.style.width = '25%';
+      if (this.scanPercent) this.scanPercent.textContent = '25%';
+
+      // 3. Tiến hành quét từng ảnh và gom cụm nhân vật
+      const clusters = await this.faceEngine.scanAndClusterAlbum(
+        photos,
+        (progress) => {
+          if (progress.phase === 'detecting') {
+            const pct = 25 + Math.round((progress.current / progress.total) * 65);
+            if (this.scanBar) this.scanBar.style.width = `${pct}%`;
+            if (this.scanPercent) this.scanPercent.textContent = `${pct}%`;
+            if (this.scanStatusText) this.scanStatusText.textContent = `🔍 Đang quét khuôn mặt: ${progress.current}/${progress.total} ảnh...`;
+          } else if (progress.phase === 'clustering') {
+            if (this.scanBar) this.scanBar.style.width = '95%';
+            if (this.scanPercent) this.scanPercent.textContent = '95%';
+            if (this.scanStatusText) this.scanStatusText.textContent = '🧩 Đang phân tích và gom nhóm các nhân vật...';
+          }
+        },
+        STUDIO_CONFIG.faceAI.defaultThreshold || 0.52
+      );
+
+      // 4. Lưu kết quả vào LocalStorage & Đồng bộ lên Webhook
+      const clusterData = clusters.map((c) => ({
+        id: c.id,
+        label: c.label,
+        avatarUrl: c.avatarUrl,
+        photoCount: c.photoCount,
+        photoIds: Array.from(c.photoIds),
+      }));
+
+      localStorage.setItem(`studio_clusters_${folderId}`, JSON.stringify(clusterData));
+      if (slug) {
+        localStorage.setItem(`studio_clusters_${slug}`, JSON.stringify(clusterData));
+      }
+
+      // Đẩy lên Webhook đám mây để mọi thiết bị của khách mở lên đều có ngay
+      const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+      if (webhookUrl) {
+        fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'save_clusters',
+            folderId,
+            slug,
+            clusters: clusterData,
+          }),
+        }).catch(() => {});
+      }
+
+      // 5. Hiển thị kết quả thành công
+      this.renderScanSuccess(clusterData, slug);
+      this.renderHistory();
+      this.isScanning = false;
+    } catch (err) {
+      console.error('Lỗi khi quét AI khuôn mặt trong admin:', err);
+      if (this.scanBadge) {
+        this.scanBadge.textContent = 'Lỗi quét';
+        this.scanBadge.style.background = '#fee2e2';
+        this.scanBadge.style.color = '#dc2626';
+      }
+      if (this.scanStatusText) this.scanStatusText.textContent = `⚠️ Lỗi quét: ${err.message || 'Không thể hoàn tất'}`;
+      this.isScanning = false;
+    }
+  }
+
+  renderScanSuccess(clusters, slug) {
+    if (this.scanBar) this.scanBar.style.width = '100%';
+    if (this.scanPercent) this.scanPercent.textContent = '100%';
+    if (this.scanBadge) {
+      this.scanBadge.textContent = `Xong (${clusters.length} người)`;
+      this.scanBadge.style.background = '#dcfce7';
+      this.scanBadge.style.color = '#15803d';
+    }
+
+    if (clusters.length === 0) {
+      if (this.scanStatusText) this.scanStatusText.textContent = '✅ Đã quét xong, không phát hiện khuôn mặt rõ nét nào trong album.';
+      if (this.scanResultRow) this.scanResultRow.classList.add('hidden');
+      return;
+    }
+
+    if (this.scanStatusText) {
+      this.scanStatusText.textContent = `🎉 Hoàn tất nhận diện! Đã tìm thấy ${clusters.length} nhân vật trong album.`;
+    }
+    if (this.scanResultRow) this.scanResultRow.classList.remove('hidden');
+    if (this.scanChipsList) {
+      this.scanChipsList.innerHTML = '';
+      for (const c of clusters) {
+        const chip = document.createElement('div');
+        chip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;background:#fff;border:1px solid #cbd5e1;border-radius:20px;font-size:12px;';
+        chip.innerHTML = `
+          <img src="${c.avatarUrl}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;" alt="${c.label}">
+          <strong>${c.label}</strong>
+          <span style="color:#64748b;font-size:11px;">(${c.photoCount} ảnh)</span>
+        `;
+        this.scanChipsList.appendChild(chip);
+      }
+    }
+
+    const baseOrigin = window.location.origin + window.location.pathname;
+    const targetUrl = slug ? `${baseOrigin}?k=${encodeURIComponent(slug)}` : `${baseOrigin}?folder=${this.currentScanningFolderId}`;
+    if (this.scanOpenAlbumBtn) {
+      this.scanOpenAlbumBtn.href = targetUrl;
+    }
   }
 
   showButtonFeedback(btn, message) {
@@ -543,6 +732,22 @@ export class AdminManager {
         // ignore
       }
 
+      // Kiểm tra trạng thái AI mặt của album này
+      let aiStatusHtml = '';
+      try {
+        const clusterRaw = localStorage.getItem(`studio_clusters_${item.folderId}`) || (item.slug ? localStorage.getItem(`studio_clusters_${item.slug}`) : null);
+        if (clusterRaw) {
+          const cData = JSON.parse(clusterRaw);
+          if (Array.isArray(cData) && cData.length > 0) {
+            aiStatusHtml = `<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#dcfce7;color:#15803d;font-weight:600;margin-left:4px;">👥 ${cData.length} người</span>`;
+          }
+        }
+      } catch (e) {}
+
+      if (!aiStatusHtml) {
+        aiStatusHtml = `<button type="button" class="btn btn-ghost btn-xs" data-action="scan-ai" style="font-size:11px;padding:1px 6px;color:#0284c7;background:#e0f2fe;border-radius:8px;margin-left:4px;" title="Chạy AI nhận diện khuôn mặt cho album này">⚡ Quét AI</button>`;
+      }
+
       const div = document.createElement('div');
       div.className = 'history-item';
       if (isCurrentlyEditing) {
@@ -557,6 +762,7 @@ export class AdminManager {
               <strong style="color:var(--ink-primary);font-size:13.5px;">${item.client}</strong>
               <span style="font-size:11px;color:var(--ink-secondary);padding:1px 6px;background:var(--border-hairline);border-radius:4px;">${item.pkg}</span>
               ${selCountText}
+              ${aiStatusHtml}
             </div>
             <div style="font-size:11px;color:var(--ink-muted);margin-top:3px;font-family:monospace;">
               ${slugDisplay ? `<span style="color:var(--accent-success);font-weight:600;">${slugDisplay}</span> • ` : ''}ID: ${item.folderId.substring(0, 16)}... • ${item.time}
@@ -609,6 +815,17 @@ export class AdminManager {
         ].join('\n');
         navigator.clipboard.writeText(msg);
         this.showButtonFeedback(btnCopyZalo, 'Đã chép!');
+      });
+
+      // Nút Quét AI
+      div.querySelector('[data-action="scan-ai"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.driveInput.value = item.folderId;
+        this.clientInput.value = item.client;
+        this.packageInput.value = item.pkg;
+        if (this.shortSlugInput) this.shortSlugInput.value = item.slug || '';
+        this.startAutoScanForAlbum(item.folderId, item.slug, true);
+        this.aiScanBox?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
 
       // Nút Mở album
