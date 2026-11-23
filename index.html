@@ -123,6 +123,27 @@
 
   <!-- Màn hình duyệt ảnh chính (Justified Grid) -->
   <main id="gallery-container" class="gallery-main">
+    <!-- Thanh Thao Tác Bỏ Chọn Nhanh (Tự động hiển thị khi lọc ảnh Đã chọn) -->
+    <div id="selected-toolbar" class="selected-toolbar hidden">
+      <div class="selected-toolbar-info">
+        <span class="selected-toolbar-badge">
+          <span class="dot-heart"></span>
+          <span id="selected-toolbar-count">0 ảnh đã chọn</span>
+        </span>
+        <span class="selected-toolbar-tip">💡 <strong>Mẹo:</strong> Bật chế độ chạm nhanh để bấm vào bất kỳ đâu trên ảnh là gỡ bỏ ngay!</span>
+      </div>
+      <div class="selected-toolbar-actions">
+        <button type="button" id="btn-toggle-quick-deselect" class="btn-quick-toggle" title="Chạm trực tiếp vào bất kỳ đâu trên bức ảnh để bỏ chọn ngay lập tức">
+          <span class="quick-toggle-dot"></span>
+          <span id="quick-toggle-label">⚡ Chế độ chạm bỏ chọn nhanh: TẮT</span>
+        </button>
+        <button type="button" id="btn-deselect-all" class="btn-deselect-all" title="Bỏ chọn tất cả các ảnh đã chọn">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7V4a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+          <span>Bỏ chọn tất cả</span>
+        </button>
+      </div>
+    </div>
+
     <div id="gallery-grid" class="gallery-grid"></div>
 
     <!-- Trạng thái trống / đang tải -->
@@ -159,6 +180,9 @@
           <span>Đã chọn: <strong id="counter-selected" class="tabular-nums">0</strong> / <span id="counter-limit" class="tabular-nums">Không giới hạn</span></span>
           <span id="counter-warning" class="over-limit-tag hidden"></span>
         </div>
+        <button type="button" id="bar-btn-quick-mode" class="quick-mode-pill" title="Bật/Tắt chế độ chạm vào bất kỳ ảnh nào để chọn hoặc bỏ chọn ngay lập tức">
+          <span>⚡ Chạm nhanh: TẮT</span>
+        </button>
       </div>
 
       <!-- Bộ lọc trạng thái -->
@@ -740,6 +764,6 @@
   </script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=8.0"></script>
+  <script type="module" src="js/app.js?v=8.1"></script>
 </body>
 </html>

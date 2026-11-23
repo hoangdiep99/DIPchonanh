@@ -2,8 +2,8 @@
  * Phân hệ 3.2: Lưới ảnh Responsive Justified Grid giữ nguyên tỷ lệ khung hình gốc
  * (gap 8px trên mobile, 12px trên desktop) + Lazy Loading qua IntersectionObserver.
  */
-import { attachImageWithFallback } from './drive.js?v=8.0';
-import { ICONS } from './icons.js?v=8.0';
+import { attachImageWithFallback } from './drive.js?v=8.1';
+import { ICONS } from './icons.js?v=8.1';
 
 export class GalleryGrid {
   constructor(containerEl, callbacks) {
@@ -251,9 +251,20 @@ export class GalleryGrid {
     });
     badgesLeft.appendChild(noteBadge);
 
-    // Góc trên phải: Nút Tim (Chọn) & Sao (Ưu tiên)
+    // Góc trên phải: Nút Kính Lúp (Xem To), Tim (Chọn) & Sao (Ưu tiên)
     const actions = document.createElement('div');
     actions.className = 'photo-actions';
+
+    const zoomBtn = document.createElement('button');
+    zoomBtn.type = 'button';
+    zoomBtn.className = 'card-action-btn btn-zoom';
+    zoomBtn.setAttribute('aria-label', `Xem chi tiết ${photo.name}`);
+    zoomBtn.title = 'Phóng to xem chi tiết ảnh';
+    zoomBtn.innerHTML = ICONS.zoomIn || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>`;
+    zoomBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.callbacks.onOpenLightbox(index, false);
+    });
 
     const starBtn = document.createElement('button');
     starBtn.type = 'button';
@@ -270,15 +281,21 @@ export class GalleryGrid {
     heartBtn.type = 'button';
     heartBtn.className = `card-action-btn btn-heart${sel.selected ? ' is-active' : ''}`;
     heartBtn.setAttribute('aria-label', `Chọn ảnh ${photo.name}`);
-    heartBtn.title = 'Thả tim chọn ảnh';
+    heartBtn.title = sel.selected ? 'Bấm để bỏ chọn ảnh này' : 'Thả tim chọn ảnh';
     heartBtn.innerHTML = ICONS.heart(sel.selected);
     heartBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.callbacks.onToggleHeart(photo.id);
     });
 
+    actions.appendChild(zoomBtn);
     actions.appendChild(starBtn);
     actions.appendChild(heartBtn);
+
+    // Huy hiệu Bỏ chọn nhanh (hiển thị khi bật Chế độ chạm bỏ chọn nhanh)
+    const quickBadge = document.createElement('div');
+    quickBadge.className = 'quick-remove-badge';
+    quickBadge.innerHTML = '<span>✕ Chạm để bỏ</span>';
 
     // Góc dưới: Tên file gọn & Nút Tải gốc (nếu download=1)
     const overlayBottom = document.createElement('div');
@@ -307,9 +324,15 @@ export class GalleryGrid {
     card.appendChild(imgWrap);
     card.appendChild(badgesLeft);
     card.appendChild(actions);
+    card.appendChild(quickBadge);
     card.appendChild(overlayBottom);
 
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      // Nếu đang ở Chế độ chạm nhanh hoặc giữ phím Ctrl/Alt/Shift: chọn/bỏ chọn ngay tức khắc
+      if ((this.callbacks.isQuickToggleMode && this.callbacks.isQuickToggleMode()) || e.ctrlKey || e.altKey || e.shiftKey) {
+        this.callbacks.onToggleHeart(photo.id);
+        return;
+      }
       this.callbacks.onOpenLightbox(index, false);
     });
 
@@ -330,9 +353,19 @@ export class GalleryGrid {
     card.classList.toggle('is-selected', Boolean(sel.selected));
     card.classList.toggle('is-priority', Boolean(sel.priority));
 
+    // Nếu đang xem tab "Đã chọn" mà người dùng bỏ chọn ảnh,
+    // làm mờ nhẹ ảnh đó để biểu thị trực quan mà lưới không bị nhảy vị trí
+    const currentFilter = this.callbacks.getCurrentFilter ? this.callbacks.getCurrentFilter() : 'all';
+    if (currentFilter === 'selected') {
+      card.classList.toggle('is-unselected-temp', !sel.selected);
+    } else {
+      card.classList.remove('is-unselected-temp');
+    }
+
     const heartBtn = card.querySelector('.btn-heart');
     if (heartBtn) {
       heartBtn.classList.toggle('is-active', Boolean(sel.selected));
+      heartBtn.title = sel.selected ? 'Bấm để bỏ chọn ảnh này' : 'Thả tim chọn ảnh';
       heartBtn.innerHTML = ICONS.heart(Boolean(sel.selected));
     }
 

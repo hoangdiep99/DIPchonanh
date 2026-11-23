@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=8.0';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.0';
-import { GalleryGrid } from './gallery.js?v=8.0';
-import { LightboxModal } from './lightbox.js?v=8.0';
-import { StorageManager } from './storage.js?v=8.0';
-import { FaceFilterEngine } from './face-filter.js?v=8.0';
-import { ExportService } from './export.js?v=8.0';
-import { AdminManager } from './admin.js?v=8.0';
+import { STUDIO_CONFIG } from '../config.js?v=8.1';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.1';
+import { GalleryGrid } from './gallery.js?v=8.1';
+import { LightboxModal } from './lightbox.js?v=8.1';
+import { StorageManager } from './storage.js?v=8.1';
+import { FaceFilterEngine } from './face-filter.js?v=8.1';
+import { ExportService } from './export.js?v=8.1';
+import { AdminManager } from './admin.js?v=8.1';
 
 class AppController {
   constructor() {
@@ -41,6 +41,7 @@ class AppController {
     this.isSyncing = false;
     this.lastLocalActionTime = 0;
     this.lastCloudUpdatedAt = 0;
+    this.quickToggleMode = false;
 
     this.init();
   }
@@ -266,6 +267,17 @@ class AppController {
 
     this.btnRetryLoad.addEventListener('click', () => this.loadAlbumData());
 
+    this.selectedToolbar = document.getElementById('selected-toolbar');
+    this.selectedToolbarCount = document.getElementById('selected-toolbar-count');
+    this.btnToggleQuickDeselect = document.getElementById('btn-toggle-quick-deselect');
+    this.quickToggleLabel = document.getElementById('quick-toggle-label');
+    this.btnDeselectAll = document.getElementById('btn-deselect-all');
+    this.barBtnQuickMode = document.getElementById('bar-btn-quick-mode');
+
+    this.btnToggleQuickDeselect?.addEventListener('click', () => this.toggleQuickMode());
+    this.barBtnQuickMode?.addEventListener('click', () => this.toggleQuickMode());
+    this.btnDeselectAll?.addEventListener('click', () => this.deselectAllPhotos());
+
     // Filter pills
     const pills = document.querySelectorAll('.filter-pill');
     pills.forEach((p) => {
@@ -273,6 +285,7 @@ class AppController {
         this.currentFilter = p.dataset.filter;
         this.updateActiveFilterPill();
         this.applyFilters();
+        this.updateSelectedToolbar();
       });
     });
 
@@ -293,6 +306,8 @@ class AppController {
       allowDownload: this.allowDownload,
       getSelection: (id) => this.getPhotoSelection(id),
       getFaceScore: (id) => this.faceScoresMap.get(id),
+      getCurrentFilter: () => this.currentFilter,
+      isQuickToggleMode: () => this.quickToggleMode,
       onToggleHeart: (id) => this.toggleHeart(id),
       onToggleStar: (id) => this.toggleStar(id),
       onOpenLightbox: (index, focusNote) => this.openLightboxAt(index, focusNote),
@@ -520,6 +535,7 @@ class AppController {
     }
 
     this.updateCounters();
+    this.updateSelectedToolbar();
   }
 
   getPhotoSelection(photoId) {
@@ -542,6 +558,7 @@ class AppController {
 
     this.galleryGrid.updateCardState(photoId, this.getPhotoSelection(photoId));
     this.updateCounters();
+    this.updateSelectedToolbar();
     this.scheduleSaveDraft();
   }
 
@@ -561,6 +578,7 @@ class AppController {
 
     this.galleryGrid.updateCardState(photoId, this.getPhotoSelection(photoId));
     this.updateCounters();
+    this.updateSelectedToolbar();
     this.scheduleSaveDraft();
   }
 
@@ -580,6 +598,7 @@ class AppController {
     this.selectionsMap.set(photoId, { ...cur });
     this.galleryGrid.updateCardState(photoId, this.getPhotoSelection(photoId));
     this.updateCounters();
+    this.updateSelectedToolbar();
     this.scheduleSaveDraft();
   }
 
@@ -594,6 +613,7 @@ class AppController {
     this.selectionsMap.set(photoId, { ...cur });
     this.galleryGrid.updateCardState(photoId, this.getPhotoSelection(photoId));
     this.updateCounters();
+    this.updateSelectedToolbar();
     this.scheduleSaveDraft();
   }
 
@@ -760,6 +780,87 @@ class AppController {
       this.counterPill.classList.remove('is-over-limit');
       this.counterWarning.classList.add('hidden');
     }
+
+    this.updateSelectedToolbar();
+  }
+
+  // --- Chế độ Chạm Bỏ Chọn Nhanh (Quick Toggle Mode) & Thao tác hàng loạt ---
+  toggleQuickMode(forceState = null) {
+    this.quickToggleMode = typeof forceState === 'boolean' ? forceState : !this.quickToggleMode;
+    this.galleryGridEl?.classList.toggle('is-quick-mode', this.quickToggleMode);
+    this.updateQuickModeUI();
+    if (this.quickToggleMode) {
+      this.showToast('⚡ Đã bật Chế độ chạm nhanh! Chạm vào bất kỳ ảnh nào để chọn / bỏ chọn.');
+    } else {
+      this.showToast('🔍 Đã tắt Chế độ chọn nhanh (Chạm ảnh để xem phóng to).');
+    }
+  }
+
+  updateQuickModeUI() {
+    if (this.btnToggleQuickDeselect) {
+      this.btnToggleQuickDeselect.classList.toggle('is-active', this.quickToggleMode);
+      if (this.quickToggleLabel) {
+        this.quickToggleLabel.textContent = this.quickToggleMode
+          ? '⚡ Chế độ chạm bỏ chọn nhanh: ĐANG BẬT'
+          : '⚡ Chế độ chạm bỏ chọn nhanh: TẮT';
+      }
+    }
+    if (this.barBtnQuickMode) {
+      this.barBtnQuickMode.classList.toggle('is-active', this.quickToggleMode);
+      this.barBtnQuickMode.innerHTML = this.quickToggleMode
+        ? '<span>⚡ Chạm nhanh: BẬT</span>'
+        : '<span>⚡ Chạm nhanh: TẮT</span>';
+    }
+  }
+
+  updateSelectedToolbar() {
+    if (!this.selectedToolbar) return;
+    let selCount = 0;
+    for (const p of this.allPhotos) {
+      if (this.getPhotoSelection(p.id).selected) selCount++;
+    }
+    if (this.selectedToolbarCount) {
+      this.selectedToolbarCount.textContent = `${selCount} ảnh đã chọn`;
+    }
+    // Hiển thị thanh công cụ khi đang ở tab "Đã chọn ♥"
+    const isViewingSelected = this.currentFilter === 'selected';
+    this.selectedToolbar.classList.toggle('hidden', !isViewingSelected);
+  }
+
+  deselectAllPhotos() {
+    let selCount = 0;
+    for (const [id, s] of this.selectionsMap.entries()) {
+      if (s.selected) selCount++;
+    }
+    if (selCount === 0) {
+      this.showToast('Hiện tại chưa có bức ảnh nào được chọn!');
+      return;
+    }
+    if (!confirm(`Bạn có chắc chắn muốn bỏ chọn tất cả ${selCount} bức ảnh đã chọn không?`)) {
+      return;
+    }
+
+    this.lastLocalActionTime = Date.now();
+    const now = Date.now();
+    for (const [id, s] of this.selectionsMap.entries()) {
+      if (s.selected || s.priority) {
+        this.selectionsMap.set(id, {
+          ...s,
+          selected: false,
+          priority: false,
+          updatedAt: now,
+        });
+        this.galleryGrid.updateCardState(id, this.getPhotoSelection(id));
+      }
+    }
+
+    this.updateCounters();
+    this.scheduleSaveDraft();
+    this.updateSelectedToolbar();
+    if (this.currentFilter === 'selected') {
+      this.applyFilters();
+    }
+    this.showToast(`✨ Đã bỏ chọn toàn bộ ${selCount} ảnh thành công!`);
   }
 
   // --- Lightbox ---

@@ -502,6 +502,145 @@ a {
   min-height: 60vh;
 }
 
+/* Thanh công cụ thao tác nhanh khi xem ảnh đã chọn */
+.selected-toolbar {
+  margin: 0 auto 16px auto;
+  padding: 10px 16px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(225, 29, 72, 0.22);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selected-toolbar-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selected-toolbar-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(225, 29, 72, 0.09);
+  color: var(--accent-heart);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(225, 29, 72, 0.18);
+}
+
+.selected-toolbar-tip {
+  font-size: 12.5px;
+  color: var(--ink-secondary);
+}
+
+.selected-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-quick-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1.5px solid #d4d4d8;
+  background: #ffffff;
+  color: var(--ink-primary);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.btn-quick-toggle:hover {
+  background: #f4f4f5;
+  border-color: #a1a1aa;
+}
+
+.btn-quick-toggle.is-active {
+  background: #ffe4e6;
+  border-color: var(--accent-heart);
+  color: var(--accent-heart);
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.16);
+}
+
+.quick-toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a1a1aa;
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.btn-quick-toggle.is-active .quick-toggle-dot {
+  background: var(--accent-heart);
+  box-shadow: 0 0 8px var(--accent-heart);
+  transform: scale(1.2);
+}
+
+.btn-deselect-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid rgba(225, 29, 72, 0.28);
+  background: rgba(225, 29, 72, 0.06);
+  color: var(--accent-heart);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.btn-deselect-all:hover {
+  background: var(--accent-heart);
+  color: #ffffff;
+  border-color: var(--accent-heart);
+  transform: scale(1.02);
+}
+
+.quick-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px dashed rgba(24, 24, 27, 0.22);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quick-mode-pill:hover {
+  background: #ffffff;
+  color: var(--ink-primary);
+  border-color: var(--ink-primary);
+}
+
+.quick-mode-pill.is-active {
+  background: var(--accent-heart);
+  color: #ffffff;
+  border-style: solid;
+  border-color: var(--accent-heart);
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.35);
+}
+
 @media (min-width: 768px) {
   .gallery-main {
     padding: 18px 28px calc(120px + var(--bottom-safe));
@@ -665,45 +804,115 @@ a {
 }
 
 .card-action-btn {
-  width: 32px;
-  height: 32px;
+  position: relative;
+  width: 33px;
+  height: 33px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(24, 24, 27, 0.08);
+  border: 1px solid rgba(24, 24, 27, 0.1);
   color: var(--ink-secondary);
-  box-shadow: 0 2px 8px rgba(24, 24, 27, 0.14);
-  transition: transform 0.14s ease, background 0.14s ease, color 0.14s ease;
+  box-shadow: 0 2px 8px rgba(24, 24, 27, 0.16);
+  transition: transform 0.14s ease, background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+}
+
+/* Mở rộng vùng bấm vô hình (Hitbox) xung quanh nút để bấm cực nhạy trên màn hình cảm ứng & chuột */
+.card-action-btn::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
 }
 
 .card-action-btn:hover {
-  transform: scale(1.07);
+  transform: scale(1.08);
   background: #FFFFFF;
   color: var(--ink-primary);
 }
 
 .card-action-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 
 .card-action-btn svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
 }
 
 .card-action-btn.btn-heart.is-active {
+  width: 35px;
+  height: 35px;
   background: var(--accent-heart);
   color: #FFFFFF;
   border-color: var(--accent-heart);
+  box-shadow: 0 3px 10px rgba(225, 29, 72, 0.42);
+}
+
+.card-action-btn.btn-heart.is-active:hover {
+  background: #be123c;
+  transform: scale(1.12);
 }
 
 .card-action-btn.btn-star.is-active {
   background: var(--accent-star);
   color: #FFFFFF;
   border-color: var(--accent-star);
+}
+
+.card-action-btn.btn-zoom {
+  opacity: 0.88;
+}
+
+.card-action-btn.btn-zoom:hover {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Chế độ Chạm Bỏ Chọn Nhanh (Quick Toggle Mode)
+   ========================================================================== */
+.gallery-grid.is-quick-mode .photo-card {
+  cursor: pointer;
+}
+
+.gallery-grid.is-quick-mode .photo-card:hover {
+  outline: 2.5px dashed var(--accent-heart);
+  outline-offset: -2.5px;
+}
+
+.gallery-grid.is-quick-mode .photo-card.is-selected .quick-remove-badge {
+  display: flex;
+}
+
+.quick-remove-badge {
+  display: none;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(225, 29, 72, 0.92);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  z-index: 3;
+  animation: pulseQuickBadge 1.8s infinite;
+}
+
+@keyframes pulseQuickBadge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.photo-card.is-unselected-temp {
+  opacity: 0.35;
+  filter: grayscale(90%);
+  transition: opacity 0.2s ease, filter 0.2s ease;
 }
 
 .card-download-btn {

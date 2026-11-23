@@ -5,8 +5,8 @@
  * - Phóng to chi tiết (Zoom) bằng nút, cuộn chuột, chạm đúp, chụm 2 ngón & kéo di chuyển
  * - Khu vực thao tác nhanh nằm gọn dưới đáy (có thể thu gọn): Chọn, Ưu tiên, Quick Tags, Ghi chú
  */
-import { attachImageWithFallback } from './drive.js?v=8.0';
-import { ICONS } from './icons.js?v=8.0';
+import { attachImageWithFallback } from './drive.js?v=8.1';
+import { ICONS } from './icons.js?v=8.1';
 
 export class LightboxModal {
   constructor(modalEl, options) {
