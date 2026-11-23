@@ -251,7 +251,7 @@ def main():
 
     print(f"✨ Đã phân loại thành công {len(final_clusters)} người trong album!")
 
-    # 6. Ghi kết quả ra data/faces_<slug>.json
+    # 6. Ghi kết quả ra data/faces_<slug>.json và data/faces_<folderId>.json
     output_filename = f"faces_{slug}.json"
     output_path = os.path.join(data_dir, output_filename)
 
@@ -268,6 +268,12 @@ def main():
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(result_json, f, ensure_ascii=False, indent=2)
+
+    # Đồng thời ghi theo folderId để truy cập theo link folder=... vẫn nạp được ngay
+    if folder_id and folder_id != slug:
+        folder_output_path = os.path.join(data_dir, f"faces_{folder_id}.json")
+        with open(folder_output_path, "w", encoding="utf-8") as f:
+            json.dump(result_json, f, ensure_ascii=False, indent=2)
 
     print(f"💾 Đã lưu kết quả tại: {output_path}")
     print("=" * 60)

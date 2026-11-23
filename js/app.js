@@ -109,6 +109,7 @@ class AppController {
       client = client.replace(/[-_]+/g, ' ');
     }
 
+    this.slug = shortKey || '';
     this.folderId = folder;
     this.clientName = client || 'Khách hàng';
     this.packageName = pkg || 'Album Tiêu Chuẩn';
@@ -1168,8 +1169,13 @@ class AppController {
   }
 
   async loadCachedClusters() {
-    const slug = this.slug || this.initialKeyParam;
+    let slug = this.slug || new URLSearchParams(window.location.search).get('k') || new URLSearchParams(window.location.search).get('album') || '';
     const folderId = this.folderId;
+    if (!slug && folderId) {
+      const defaultList = STUDIO_CONFIG.defaultAlbums || [];
+      const found = defaultList.find((a) => a.folderId === folderId);
+      if (found && found.slug) slug = found.slug;
+    }
     let loadedFromGitHub = false;
 
     // 1. Thử tải dữ liệu phân loại AI InsightFace có sẵn từ GitHub (nếu Studio đã quét trước)

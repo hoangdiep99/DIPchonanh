@@ -1,0 +1,32 @@
+{
+  "slug": "viet-phuc",
+  "folderId": "1o4maN-z8SsUB3h-GLAUrK1DBjDbU7AlP",
+  "model": "InsightFace ArcFace ResNet-100 (buffalo_l)",
+  "scannedAt": "2026-11-23T16:08:38.695152",
+  "totalPhotos": 12,
+  "totalFacesDetected": 12,
+  "clustersCount": 1,
+  "clusters": [
+    {
+      "id": "person_1",
+      "label": "Nhân vật chính 1",
+      "avatarUrl": "data/avatars/viet-phuc_person_1.jpg",
+      "photoCount": 12,
+      "photoIds": [
+        "1H7YFAtQUmyjxFXs4RoUa1bVeaQrQ2oPb",
+        "1ADtxWWbl5h0LM58kJ_qppK3wT1K_0SPb",
+        "1fQjIZihkvm-VdNb9X_0tBx7JbPDByJL1",
+        "1WsxIg_bwb_4L7fNJgzGFmaY8GHuz3Ghk",
+        "1D8kILn0CX21gmHwsNrOg3wHAeXSp7bLL",
+        "1OWf95PuivXNHlWEqKTacNqjn2cwKbila",
+        "1cfjx7ISPLCsfqhfy1DwOSMO7brScyshp",
+        "1QibBnI80-Wc7AMy2ka3b_tG3L4KcZKK1",
+        "1lmCVrmrOLqzalhkr2qXsYg9K_I7iFwzu",
+        "1nBx_SVZvaODVrXgyh41ZSN-15eaNF0LL",
+        "1ycYsQavu7e5Qvs2efp48nIsKrXBnO-go",
+        "1vBxs6illYWn1fUdpg9AWwTs9RoAtK6Qj"
+      ],
+      "bestPhotoId": "1nBx_SVZvaODVrXgyh41ZSN-15eaNF0LL"
+    }
+  ]
+}
