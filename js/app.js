@@ -3,8 +3,8 @@
  */
 import { STUDIO_CONFIG } from '../config.js?v=8.5';
 import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=8.5';
-import { GalleryGrid } from './gallery.js?v=8.5';
-import { LightboxModal } from './lightbox.js?v=8.5';
+import { GalleryGrid } from './gallery.js?v=9.0';
+import { LightboxModal } from './lightbox.js?v=9.0';
 import { StorageManager } from './storage.js?v=8.5';
 import { FaceFilterEngine } from './face-filter.js?v=8.5';
 import { ExportService } from './export.js?v=8.5';
@@ -1749,59 +1749,80 @@ class AppController {
     }
   }
 
-  // --- Tải Ảnh Gốc 100% Nguyên Bản (20MB) & Lưu Vào Thư Viện ---
-  downloadOriginalFile(photo) {
+  // --- Tải Ảnh Gốc 100% Nguyên Bản (20MB) & Lưu Vào Thư Viện Không Rời Trang ---
+  async downloadOriginalFile(photo) {
     if (!photo) return;
     const fileName = photo.name && (photo.name.toLowerCase().endsWith('.jpg') || photo.name.toLowerCase().endsWith('.jpeg') || photo.name.toLowerCase().endsWith('.png'))
       ? photo.name
       : `${photo.name || photo.id}.jpg`;
 
-    this.showToast(`Đang tải file gốc ${fileName} (dung lượng gốc 100%)...`, 'info');
-    // Link trực tiếp tải file gốc đầy đủ từ Google Drive (20MB không bị nén)
+    this.showToast(`⏳ Đang nạp ảnh gốc ${fileName} (~20MB)...`, 'info', 4000);
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    try {
+      const directUrl = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
+      const res = await fetch(directUrl);
+      if (res.ok) {
+        const originalBlob = await res.blob();
+
+        // 1. Trên iOS / iPhone: Gọi native iOS Share Sheet để người dùng bấm ngay "Lưu hình ảnh" vào Cuộn camera
+        if (isIOS && navigator.canShare && typeof File === 'function') {
+          try {
+            const file = new File([originalBlob], fileName, { type: 'image/jpeg' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: fileName,
+              });
+              this.showToast(`✅ Đã lưu ảnh ${fileName} vào Thư viện Ảnh!`, 'success');
+              return;
+            }
+          } catch (shareErr) {
+            if (shareErr.name === 'AbortError') return; // Người dùng chủ động ấn Hủy menu share
+            console.warn('Share API error, fallback to blob download:', shareErr);
+          }
+        }
+
+        // 2. Trên Android, Máy tính hoặc khi không dùng Share Sheet:
+        // Tải qua Same-Origin Blob URL (trình duyệt tải ngay trong nền, TUYỆT ĐỐI KHÔNG mở tab mới, không rời trang)
+        const downloadBlob = new Blob([originalBlob], { type: 'application/octet-stream' });
+        const blobUrl = URL.createObjectURL(downloadBlob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        // TUYỆT ĐỐI KHÔNG dùng target="_blank" để tránh bị Safari nhảy tab/thoát trang
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        }, 4000);
+        this.showToast(`✅ Đã tải file gốc ${fileName}!`, 'success');
+        return;
+      }
+    } catch (err) {
+      console.warn('Blob fetch error, fallback to direct drive:', err);
+    }
+
+    // Fallback nếu không fetch được blob: Tải trực tiếp nhưng KHÔNG dùng target="_blank"
     const directDownloadUrl = `https://drive.usercontent.google.com/download?id=${photo.id}&export=download&authuser=0`;
     const a = document.createElement('a');
     a.href = directDownloadUrl;
     a.download = fileName;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+    // Không dùng target="_blank"
     document.body.appendChild(a);
     a.click();
     setTimeout(() => document.body.removeChild(a), 2000);
-    this.showToast(`✅ Đang tải file gốc ${fileName} từ Google Drive!`, 'success');
+    this.showToast(`✅ Đang tải ${fileName}...`, 'success');
   }
 
   async saveToCameraRoll(photo) {
     if (!photo) return;
-    const fileName = photo.name && (photo.name.toLowerCase().endsWith('.jpg') || photo.name.toLowerCase().endsWith('.jpeg')) ? photo.name : `${photo.name || photo.id}.jpg`;
-    this.showToast(`Đang chuẩn bị ảnh lưu vào Thư viện...`, 'info');
-    const directUrl = photo.originalUrl || `https://lh3.googleusercontent.com/d/${photo.id}=s0`;
-
-    try {
-      const res = await fetch(directUrl);
-      if (!res.ok) throw new Error('Fetch status ' + res.status);
-      const originalBlob = await res.blob();
-
-      if (navigator.canShare && typeof File === 'function') {
-        const file = new File([originalBlob], fileName, { type: 'image/jpeg' });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: fileName,
-          });
-          this.showToast(`✅ Bạn chọn "Lưu hình ảnh" để lưu thẳng vào Cuộn camera!`, 'success');
-          return;
-        }
-      }
-
-      this.downloadOriginalFile(photo);
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      this.downloadOriginalFile(photo);
-    }
+    await this.downloadOriginalFile(photo);
   }
 
   downloadSinglePhoto(photo) {
-    // Mặc định tải file gốc đầy đủ không nén từ Google Drive
     this.downloadOriginalFile(photo);
   }
 

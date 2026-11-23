@@ -436,7 +436,6 @@ export class LightboxModal {
     this.folderEl.classList.toggle('hidden', !photo.folderName);
 
     if (this.downloadLink && this.allowDownload) {
-      this.downloadLink.href = 'javascript:void(0);';
       this.downloadLink.title = `Tải ảnh ${photo.name} về máy`;
     }
 
