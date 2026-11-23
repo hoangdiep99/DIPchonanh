@@ -434,7 +434,7 @@ class AppController {
       }
 
       this.renderFolderTabs();
-      this.loadCachedClusters();
+      await this.loadCachedClusters();
 
       if (this.initialSelParam) {
         this.applySelectedFromParam(this.initialSelParam);
