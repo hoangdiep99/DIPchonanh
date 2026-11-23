@@ -67,6 +67,15 @@ export const STUDIO_CONFIG = {
       download: 1,
       time: 'Album hiện tại',
     },
+    {
+      folderId: '1g8AZVnAvlDvJrt3Ev3z9xHf0NwcErOY0',
+      client: 'Sự kiện Tết',
+      pkg: 'Album Tiêu Chuẩn',
+      slug: 'su-kien-tets',
+      limit: 0,
+      download: 1,
+      time: '23/11/2026',
+    },
   ],
 
   // Cấu hình Nhận diện khuôn mặt nhẹ trên trình duyệt (@vladmandic/human)
