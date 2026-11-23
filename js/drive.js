@@ -231,15 +231,16 @@ export function clearAlbumCache(rootFolderId) {
  * Tải danh sách ảnh qua Google Apps Script Web App (HOÀN TOÀN KHÔNG CẦN GOOGLE DRIVE API KEY).
  */
 async function loadFromAppsScript(rootFolderId, appsScriptUrl, onProgress, forceRefresh = false) {
+  const safeProgress = typeof onProgress === 'function' ? onProgress : null;
   if (!forceRefresh) {
     const cached = getCachedAlbum(rootFolderId);
     if (cached) {
-      onProgress?.('Đang tải tức thì từ bộ nhớ đệm (Cache)...');
+      safeProgress?.('Đang tải tức thì từ bộ nhớ đệm (Cache)...');
       return cached;
     }
   }
 
-  onProgress?.('Đang kết nối Google Drive qua Apps Script (không cần API Key)...');
+  safeProgress?.('Đang kết nối Google Drive qua Apps Script (không cần API Key)...');
   const sep = appsScriptUrl.includes('?') ? '&' : '?';
   const refreshParam = forceRefresh ? '&refresh=1' : '';
   const url = `${appsScriptUrl}${sep}folderId=${encodeURIComponent(rootFolderId)}${refreshParam}`;
@@ -290,6 +291,7 @@ async function loadFromAppsScript(rootFolderId, appsScriptUrl, onProgress, force
  * @returns {Promise<{ folders: Array<{id, name, count}>, photos: Array, isFromCache?: boolean }>}
  */
 export async function loadDriveAlbum(rootFolderId, apiKey, onProgress, forceRefresh = false) {
+  const safeProgress = typeof onProgress === 'function' ? onProgress : null;
   const activeKey = apiKey || localStorage.getItem('studio_drive_api_key') || '';
   const appsScriptUrl =
     STUDIO_CONFIG.googleSheetsWebhookUrl ||
@@ -298,7 +300,7 @@ export async function loadDriveAlbum(rootFolderId, apiKey, onProgress, forceRefr
 
   // Nếu không có API Key nhưng có Web App Apps Script -> tải không cần Key
   if (!activeKey && appsScriptUrl) {
-    return await loadFromAppsScript(rootFolderId, appsScriptUrl, onProgress, forceRefresh);
+    return await loadFromAppsScript(rootFolderId, appsScriptUrl, safeProgress, forceRefresh);
   }
 
   if (!activeKey) {

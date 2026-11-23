@@ -547,7 +547,14 @@ export class AdminManager {
 
     try {
       // 1. Tải danh sách ảnh từ Google Drive
-      const albumData = await loadDriveAlbum(folderId, STUDIO_CONFIG.googleDriveApiKey, true);
+      const albumData = await loadDriveAlbum(
+        folderId,
+        STUDIO_CONFIG.googleDriveApiKey,
+        (msg) => {
+          if (this.scanStatusText && typeof msg === 'string') this.scanStatusText.textContent = msg;
+        },
+        true
+      );
       const photos = albumData.photos || [];
 
       if (photos.length === 0) {
