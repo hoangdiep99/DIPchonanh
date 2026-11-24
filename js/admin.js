@@ -5,10 +5,10 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.23';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.23';
-import { FaceFilterEngine } from './face-filter.js?v=10.23';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.23';
+import { STUDIO_CONFIG } from '../config.js?v=10.24';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.24';
+import { FaceFilterEngine } from './face-filter.js?v=10.24';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.24';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -1157,28 +1157,40 @@ export class AdminManager {
 
       // 5. Hiển thị kết quả thành công
             // Tự động phân tích chất lượng ảnh (mờ, nhắm mắt, trùng lặp) và lưu đám mây
+      let qualitySummary = null;
       try {
+        if (this.scanStatusText) {
+          this.scanStatusText.textContent = '✨ Đang phân tích chất lượng ảnh (độ nét, nhắm mắt, ảnh giống nhau)...';
+        }
         const qualityAnalyzer = new PhotoQualityAnalyzer(this.faceEngine);
         const albumKey = folderId || slug || 'local';
-        const rawQuality = await qualityAnalyzer.analyzeAlbum(photos, albumKey, () => {});
-        if (webhookUrl && rawQuality && Object.keys(rawQuality).length > 0) {
-          fetch(webhookUrl, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'save_quality',
-              folderId,
-              slug,
-              quality: rawQuality,
-            }),
-          }).catch(() => {});
+        const rawQuality = await qualityAnalyzer.analyzeAlbum(photos, albumKey, (p) => {
+          if (this.scanStatusText && p.msg) {
+            this.scanStatusText.textContent = `✨ ${p.msg}`;
+          }
+        });
+        if (rawQuality && Object.keys(rawQuality).length > 0) {
+          const { counts } = qualityAnalyzer.summarize(photos, rawQuality);
+          qualitySummary = counts;
+          if (webhookUrl) {
+            fetch(webhookUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save_quality',
+                folderId,
+                slug,
+                quality: rawQuality,
+              }),
+            }).catch(() => {});
+          }
         }
       } catch (qErr) {
         console.warn('Lỗi phân tích AI quality trong admin:', qErr);
       }
 
-      this.renderScanSuccess(clusterData, slug);
+      this.renderScanSuccess(clusterData, slug, qualitySummary);
       this.renderHistory();
       this.isScanning = false;
       this.updateAdminScanControls('idle');
@@ -1195,23 +1207,30 @@ export class AdminManager {
     }
   }
 
-  renderScanSuccess(clusters, slug) {
+  renderScanSuccess(clusters, slug, qualitySummary = null) {
     if (this.scanBar) this.scanBar.style.width = '100%';
     if (this.scanPercent) this.scanPercent.textContent = '100%';
     if (this.scanBadge) {
-      this.scanBadge.textContent = `Xong (${clusters.length} người)`;
+      this.scanBadge.textContent = `Xong (${clusters.length} người + AI lọc ảnh)`;
       this.scanBadge.style.background = '#dcfce7';
       this.scanBadge.style.color = '#15803d';
     }
 
+    let qualityText = '';
+    if (qualitySummary) {
+      qualityText = ` • ✨ AI chất lượng: ${qualitySummary.groups} nhóm giống nhau, ${qualitySummary.blink} ảnh nhắm mắt, ${qualitySummary.blurry} ảnh mờ`;
+    }
+
     if (clusters.length === 0) {
-      if (this.scanStatusText) this.scanStatusText.textContent = '✅ Đã quét xong, không phát hiện khuôn mặt rõ nét nào trong album.';
+      if (this.scanStatusText) {
+        this.scanStatusText.textContent = `✅ Đã quét xong. Không phát hiện khuôn mặt rõ nét${qualityText}.`;
+      }
       if (this.scanResultRow) this.scanResultRow.classList.add('hidden');
       return;
     }
 
     if (this.scanStatusText) {
-      this.scanStatusText.textContent = `🎉 Hoàn tất nhận diện! Đã tìm thấy ${clusters.length} nhân vật trong album.`;
+      this.scanStatusText.textContent = `🎉 Hoàn tất nhận diện! Tìm thấy ${clusters.length} nhân vật${qualityText}.`;
     }
     if (this.scanResultRow) this.scanResultRow.classList.remove('hidden');
     if (this.scanChipsList) {
