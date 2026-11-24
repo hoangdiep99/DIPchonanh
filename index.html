@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.13">
+  <link rel="stylesheet" href="css/styles.css?v=10.14">
 </head>
 <body>
 
@@ -997,6 +997,44 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Xem & Copy Mã Ảnh Khách Đã Chọn -->
+    <div id="admin-selected-modal" class="admin-cover-modal hidden" role="dialog" aria-modal="true" aria-labelledby="admin-selected-modal-title">
+      <div id="admin-selected-backdrop" class="admin-cover-backdrop"></div>
+      <div class="admin-cover-dialog" style="max-width:680px;">
+        <div class="admin-cover-header">
+          <div>
+            <h3 id="admin-selected-modal-title" style="margin:0;font-size:17px;">♥ Mã Ảnh Khách Đã Chọn</h3>
+            <p id="admin-selected-modal-sub" style="margin:3px 0 0;font-size:12.5px;color:var(--ink-secondary);">Tự động đồng bộ mới nhất từ điện thoại khách hàng</p>
+          </div>
+          <button type="button" id="admin-selected-close" class="pwa-ios-close-btn" aria-label="Đóng">✕</button>
+        </div>
+
+        <div id="admin-selected-status" class="admin-cover-status hidden">
+          <div class="spinner" style="width:22px;height:22px;border-width:2.5px;"></div>
+          <span id="admin-selected-status-text">Đang đồng bộ danh sách ảnh khách đã chọn từ Đám mây...</span>
+        </div>
+
+        <div id="admin-selected-content" class="hidden" style="display:flex;flex-direction:column;gap:12px;overflow:hidden;flex:1;">
+          <div id="admin-selected-summary" class="admin-selected-summary"></div>
+
+          <div>
+            <label style="font-size:12px;font-weight:700;color:var(--ink-primary);display:block;margin-bottom:5px;">
+              Danh sách mã file (dán thẳng vào ô lọc Lightroom / Photoshop):
+            </label>
+            <textarea id="admin-selected-codes-text" class="form-textarea" rows="3" readonly style="font-family:monospace;font-size:12.5px;background:#faf9f6;"></textarea>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" id="admin-btn-copy-lr" class="btn btn-primary btn-sm" style="flex:1;min-width:160px;">📋 Copy mã file (Lightroom)</button>
+            <button type="button" id="admin-btn-copy-nums" class="btn btn-secondary btn-sm">🔢 Copy chỉ số cuối</button>
+            <button type="button" id="admin-btn-copy-detail" class="btn btn-secondary btn-sm">📝 Copy chi tiết &amp; ghi chú</button>
+          </div>
+
+          <div id="admin-selected-list" class="admin-selected-list"></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- Script Trợ Thủ Mở Nhanh Link Drive (Hoạt động tức thì không bị phụ thuộc cache trình duyệt) -->
@@ -1144,9 +1182,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.13" defer></script>
+  <script src="js/pwa.js?v=10.14" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.13"></script>
+  <script type="module" src="js/app.js?v=10.14"></script>
 </body>
 </html>

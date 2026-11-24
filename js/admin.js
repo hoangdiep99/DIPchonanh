@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.13';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.13';
-import { FaceFilterEngine } from './face-filter.js?v=10.13';
+import { STUDIO_CONFIG } from '../config.js?v=10.14';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.14';
+import { FaceFilterEngine } from './face-filter.js?v=10.14';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -487,6 +487,45 @@ export class AdminManager {
     this.coverLoadMoreBtn?.addEventListener('click', () => {
       this.coverPickerLimit = (this.coverPickerLimit || 60) + 60;
       this.renderCoverPickerGrid();
+    });
+
+    // Modal Xem & Copy Mã Ảnh Khách Đã Chọn
+    this.selectedModal = this.container.querySelector('#admin-selected-modal');
+    this.selectedBackdrop = this.container.querySelector('#admin-selected-backdrop');
+    this.selectedCloseBtn = this.container.querySelector('#admin-selected-close');
+    this.selectedModalTitle = this.container.querySelector('#admin-selected-modal-title');
+    this.selectedModalSub = this.container.querySelector('#admin-selected-modal-sub');
+    this.selectedStatusEl = this.container.querySelector('#admin-selected-status');
+    this.selectedStatusText = this.container.querySelector('#admin-selected-status-text');
+    this.selectedContentEl = this.container.querySelector('#admin-selected-content');
+    this.selectedSummaryEl = this.container.querySelector('#admin-selected-summary');
+    this.selectedCodesText = this.container.querySelector('#admin-selected-codes-text');
+    this.selectedListEl = this.container.querySelector('#admin-selected-list');
+    this.btnCopyLR = this.container.querySelector('#admin-btn-copy-lr');
+    this.btnCopyNums = this.container.querySelector('#admin-btn-copy-nums');
+    this.btnCopyDetail = this.container.querySelector('#admin-btn-copy-detail');
+
+    const closeSelectedModal = () => this.selectedModal?.classList.add('hidden');
+    this.selectedCloseBtn?.addEventListener('click', closeSelectedModal);
+    this.selectedBackdrop?.addEventListener('click', closeSelectedModal);
+
+    this.btnCopyLR?.addEventListener('click', () => {
+      if (this.currentSelectedLRText) {
+        navigator.clipboard.writeText(this.currentSelectedLRText);
+        this.showButtonFeedback(this.btnCopyLR, '✅ Đã copy mã Lightroom!');
+      }
+    });
+    this.btnCopyNums?.addEventListener('click', () => {
+      if (this.currentSelectedNumsText) {
+        navigator.clipboard.writeText(this.currentSelectedNumsText);
+        this.showButtonFeedback(this.btnCopyNums, '✅ Đã copy số cuối!');
+      }
+    });
+    this.btnCopyDetail?.addEventListener('click', () => {
+      if (this.currentSelectedDetailText) {
+        navigator.clipboard.writeText(this.currentSelectedDetailText);
+        this.showButtonFeedback(this.btnCopyDetail, '✅ Đã copy chi tiết!');
+      }
     });
 
     this.btnGenerate = this.container.querySelector('#admin-btn-generate');
@@ -1076,16 +1115,14 @@ export class AdminManager {
       const slugDisplay = item.slug ? `?k=${item.slug}` : '';
 
       // Đọc nháp xem khách đã chọn được bao nhiêu ảnh
-      let selCountText = '';
+      let selCount = 0;
       try {
         const draft = JSON.parse(localStorage.getItem(`studio_select_${item.folderId}`)) || {};
-        const count = Object.keys(draft).filter((k) => draft[k].selected).length;
-        if (count > 0) {
-          selCountText = `<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:rgba(239,68,68,0.12);color:#EF4444;font-weight:600;margin-left:6px;">♥ ${count} ảnh</span>`;
-        }
+        selCount = Object.keys(draft).filter((k) => draft[k].selected).length;
       } catch (e) {
         // ignore
       }
+      const selCountText = `<button type="button" data-action="view-selected" class="admin-sel-count-badge${selCount > 0 ? '' : ' hidden'}" style="border:none;cursor:pointer;font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,0.12);color:#EF4444;font-weight:700;margin-left:4px;" title="Bấm để xem & copy mã số ảnh khách đã chọn">♥ ${selCount} ảnh</button>`;
 
       // Kiểm tra trạng thái AI mặt của album này
       let aiStatusHtml = '';
@@ -1145,6 +1182,9 @@ export class AdminManager {
         </div>
 
         <div class="history-item-actions">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="view-selected" title="Xem & sao chép danh sách mã số ảnh khách đã chọn" style="color:#dc2626;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.05);font-weight:600;">
+            ♥ Mã ảnh chọn
+          </button>
           <button type="button" class="btn btn-secondary btn-sm" data-action="pick-cover" title="Chọn 1 ảnh đẹp nhất trong album làm ảnh đại diện">
             🖼️ Ảnh bìa
           </button>
@@ -1165,6 +1205,17 @@ export class AdminManager {
           </button>
         </div>
       `;
+
+      // Nút Xem & Copy mã ảnh khách đã chọn
+      div.querySelectorAll('[data-action="view-selected"]').forEach((el) => {
+        el.addEventListener('click', () => {
+          this.openSelectedCodesModal(item);
+        });
+      });
+
+      // Tự động kéo số lượng ảnh khách đã chọn từ Đám mây (nếu khách chọn trên điện thoại của khách)
+      const selBadgeEl = div.querySelector('.admin-sel-count-badge');
+      this.refreshCloudSelectionCount(item.folderId, selBadgeEl);
 
       // Nút Chọn ảnh bìa (cả trên thumbnail lẫn nút bấm)
       div.querySelectorAll('[data-action="pick-cover"]').forEach((el) => {
@@ -1362,5 +1413,180 @@ export class AdminManager {
     this.coverModal?.classList.add('hidden');
     this.renderHistory();
     this.syncAdminHistoryToCloud(true);
+  }
+
+  // --- XEM & COPY MÃ SỐ ẢNH KHÁCH ĐÃ CHỌN TRỰC TIẾP TRONG #ADMIN ---
+  async refreshCloudSelectionCount(folderId, badgeEl) {
+    if (!folderId) return;
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (!webhookUrl) return;
+    try {
+      const resp = await fetch(`${webhookUrl}?action=get_sync&folderId=${encodeURIComponent(folderId)}&_t=${Date.now()}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data && data.status === 'success' && data.draft && typeof data.draft === 'object') {
+        const keys = Object.keys(data.draft).filter((k) => data.draft[k] && data.draft[k].selected);
+        // Cập nhật cache local để số liệu trên máy tính luôn mới nhất từ điện thoại khách
+        if (keys.length > 0) {
+          try {
+            localStorage.setItem(`studio_select_${folderId}`, JSON.stringify(data.draft));
+          } catch {}
+          if (badgeEl) {
+            badgeEl.textContent = `♥ ${keys.length} ảnh`;
+            badgeEl.classList.remove('hidden');
+          }
+          this.updateAdminStats();
+        }
+      }
+    } catch {
+      // ignore silent background refresh
+    }
+  }
+
+  async openSelectedCodesModal(item) {
+    if (!item || !item.folderId || !this.selectedModal) return;
+
+    this.currentSelectedLRText = '';
+    this.currentSelectedNumsText = '';
+    this.currentSelectedDetailText = '';
+
+    if (this.selectedModalTitle) {
+      this.selectedModalTitle.textContent = `♥ Mã Ảnh Đã Chọn — ${item.client}`;
+    }
+    if (this.selectedModalSub) {
+      this.selectedModalSub.textContent = 'Đang đồng bộ danh sách mới nhất từ Đám mây...';
+    }
+    this.selectedStatusEl?.classList.remove('hidden');
+    if (this.selectedStatusText) {
+      this.selectedStatusText.textContent = 'Đang tải danh sách ảnh khách đã chọn & tên file từ Google Drive...';
+    }
+    this.selectedContentEl?.classList.add('hidden');
+    this.selectedModal.classList.remove('hidden');
+
+    try {
+      // 1. Lấy bản nháp chọn ảnh từ cả localStorage và Cloud (ưu tiên Cloud nếu mới hơn / có dữ liệu)
+      let draft = {};
+      try {
+        draft = JSON.parse(localStorage.getItem(`studio_select_${item.folderId}`)) || {};
+      } catch {}
+
+      const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+      if (webhookUrl) {
+        try {
+          const resp = await fetch(`${webhookUrl}?action=get_sync&folderId=${encodeURIComponent(item.folderId)}&_t=${Date.now()}`);
+          if (resp.ok) {
+            const cloudData = await resp.json();
+            if (cloudData && cloudData.status === 'success' && cloudData.draft && typeof cloudData.draft === 'object') {
+              const cloudKeys = Object.keys(cloudData.draft).filter((k) => cloudData.draft[k]?.selected);
+              if (cloudKeys.length > 0 || Object.keys(draft).length === 0) {
+                draft = cloudData.draft;
+                try {
+                  localStorage.setItem(`studio_select_${item.folderId}`, JSON.stringify(draft));
+                } catch {}
+              }
+            }
+          }
+        } catch {}
+      }
+
+      const selectedIds = Object.keys(draft).filter((k) => draft[k] && draft[k].selected);
+
+      if (selectedIds.length === 0) {
+        if (this.selectedStatusText) {
+          this.selectedStatusText.textContent = `Khách hàng "${item.client}" hiện chưa thả tim chọn ảnh nào trong album này.`;
+        }
+        if (this.selectedModalSub) {
+          this.selectedModalSub.textContent = 'Chưa có ảnh được chọn';
+        }
+        return;
+      }
+
+      // 2. Nạp danh sách ảnh từ Google Drive để dịch Photo ID -> Tên file gốc (VD: DIP_7942.JPG)
+      let photoMap = new Map();
+      try {
+        const albumData = await loadDriveAlbum(item.folderId, STUDIO_CONFIG.googleDriveApiKey, null, false);
+        for (const p of albumData?.photos || []) {
+          photoMap.set(p.id, p);
+        }
+      } catch {}
+
+      const rows = selectedIds.map((pid) => {
+        const entry = draft[pid] || {};
+        const photo = photoMap.get(pid);
+        const fullName = photo?.name || pid;
+        const baseName = fullName.replace(/\.[^/.]+$/, '');
+        const numMatch = baseName.match(/(\d{3,6})$/);
+        const shortNum = numMatch ? numMatch[1] : baseName;
+        const thumbUrl = photo?.gridUrl || `https://drive.google.com/thumbnail?id=${pid}&sz=w400`;
+        return {
+          id: pid,
+          fullName,
+          baseName,
+          shortNum,
+          thumbUrl,
+          priority: Boolean(entry.priority),
+          note: (entry.note || '').trim(),
+        };
+      });
+
+      rows.sort((a, b) => a.baseName.localeCompare(b.baseName, undefined, { numeric: true }));
+
+      const priorityCount = rows.filter((r) => r.priority).length;
+      const noteCount = rows.filter((r) => r.note).length;
+
+      this.currentSelectedLRText = rows.map((r) => r.baseName).join(', ');
+      this.currentSelectedNumsText = rows.map((r) => r.shortNum).join(', ');
+      this.currentSelectedDetailText = [
+        `📸 DANH SÁCH ẢNH KHÁCH CHỌN — ${item.client}`,
+        `Tổng chọn: ${rows.length} ảnh | Ưu tiên in: ${priorityCount} | Có ghi chú: ${noteCount}`,
+        `----------------------------------------`,
+        ...rows.map((r, i) => {
+          let line = `${i + 1}. ${r.baseName}`;
+          if (r.priority) line += ' [★ ƯU TIÊN IN]';
+          if (r.note) line += ` — Ghi chú: ${r.note}`;
+          return line;
+        }),
+      ].join('\n');
+
+      if (this.selectedModalSub) {
+        this.selectedModalSub.textContent = `Đã tải xong ${rows.length} mã ảnh khách chọn (sẵn sàng copy vào Lightroom)`;
+      }
+      if (this.selectedSummaryEl) {
+        this.selectedSummaryEl.innerHTML = `
+          <span class="admin-selected-pill is-heart">♥ ${rows.length} ảnh đã chọn</span>
+          ${priorityCount > 0 ? `<span class="admin-selected-pill is-star">★ ${priorityCount} ảnh ưu tiên</span>` : ''}
+          ${noteCount > 0 ? `<span class="admin-selected-pill">💬 ${noteCount} ghi chú</span>` : ''}
+        `;
+      }
+      if (this.selectedCodesText) {
+        this.selectedCodesText.value = this.currentSelectedLRText;
+      }
+      if (this.selectedListEl) {
+        this.selectedListEl.innerHTML = '';
+        for (const r of rows) {
+          const rowEl = document.createElement('div');
+          rowEl.className = 'admin-selected-row';
+          rowEl.innerHTML = `
+            <img src="${r.thumbUrl}" class="admin-selected-thumb" alt="${r.baseName}" loading="lazy">
+            <div class="admin-selected-info">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span class="admin-selected-name">${r.baseName}</span>
+                ${r.priority ? '<span style="font-size:11px;padding:1px 6px;border-radius:6px;background:rgba(245,158,11,0.16);color:#b45309;font-weight:700;">★ Ưu tiên</span>' : ''}
+              </div>
+              ${r.note ? `<div class="admin-selected-note">💬 ${r.note.replace(/</g, '&lt;')}</div>` : ''}
+            </div>
+          `;
+          this.selectedListEl.appendChild(rowEl);
+        }
+      }
+
+      this.selectedStatusEl?.classList.add('hidden');
+      this.selectedContentEl?.classList.remove('hidden');
+    } catch (err) {
+      console.error('Lỗi tải mã ảnh đã chọn:', err);
+      if (this.selectedStatusText) {
+        this.selectedStatusText.textContent = 'Không thể tải danh sách mã ảnh. Vui lòng thử lại!';
+      }
+    }
   }
 }
