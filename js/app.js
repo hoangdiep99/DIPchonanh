@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=9.8';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=9.8';
-import { GalleryGrid } from './gallery.js?v=9.8';
-import { LightboxModal } from './lightbox.js?v=9.8';
-import { StorageManager } from './storage.js?v=9.8';
-import { FaceFilterEngine } from './face-filter.js?v=9.8';
-import { ExportService } from './export.js?v=9.8';
-import { AdminManager } from './admin.js?v=9.8';
+import { STUDIO_CONFIG } from '../config.js?v=9.9';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=9.9';
+import { GalleryGrid } from './gallery.js?v=9.9';
+import { LightboxModal } from './lightbox.js?v=9.9';
+import { StorageManager } from './storage.js?v=9.9';
+import { FaceFilterEngine } from './face-filter.js?v=9.9';
+import { ExportService } from './export.js?v=9.9';
+import { AdminManager } from './admin.js?v=9.9';
 
 class AppController {
   constructor() {
@@ -1195,7 +1195,6 @@ class AppController {
     this.faceEngine?.stopScan();
     this.isPausedFace = false;
     this.showToast('Đang dừng và gom nhóm các khuôn mặt đã phát hiện...', 'info');
-  }
   }
 
   minimizeFaceModal() {
