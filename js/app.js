@@ -560,6 +560,9 @@ class AppController {
     }
 
     this.portalEmptyState?.classList.add('hidden');
+    if (!this.portalCoverFetching) {
+      this.portalCoverFetching = new Set();
+    }
 
     for (const item of filtered) {
       const a = document.createElement('a');
@@ -571,25 +574,128 @@ class AppController {
       const safeTime = (item.time || 'Album mới').replace(/</g, '&lt;');
       const safeSlug = item.slug ? `?k=${item.slug.replace(/</g, '&lt;')}` : '';
 
+      const cachedMeta = this.getCachedAlbumCover(item);
+      const initialCover = cachedMeta.coverUrl || '';
+      const initialFallback = cachedMeta.fallbackUrl || '';
+      const initialCount = cachedMeta.photoCount || 0;
+
       a.innerHTML = `
-        <div>
-          <div class="portal-card-top">
-            <span class="portal-card-icon" aria-hidden="true">📸</span>
-            <span class="portal-card-date">📅 ${safeTime}</span>
-          </div>
-          <h4 class="portal-card-title" style="margin-top:12px;">${safeClient}</h4>
-          <div class="portal-card-meta">
-            <span class="portal-card-pkg">${safePkg}</span>
-            ${safeSlug ? `<span class="portal-card-slug">${safeSlug}</span>` : ''}
-          </div>
+        <div class="portal-card-cover-wrap${initialCover ? '' : ' is-loading'}">
+          <span class="portal-card-cover-placeholder" aria-hidden="true">📸</span>
+          <img class="portal-card-cover-img" alt="${safeClient}" loading="lazy" decoding="async">
+          <span class="portal-card-date">📅 ${safeTime}</span>
+          <span class="portal-card-count-badge${initialCount > 0 ? '' : ' hidden'}">🖼️ ${initialCount} ảnh</span>
         </div>
-        <div class="portal-card-footer">
-          <span>Xem &amp; chọn ảnh</span>
-          <span class="portal-card-arrow">→</span>
+        <div class="portal-card-body">
+          <div>
+            <h4 class="portal-card-title">${safeClient}</h4>
+            <div class="portal-card-meta">
+              <span class="portal-card-pkg">${safePkg}</span>
+              ${safeSlug ? `<span class="portal-card-slug">${safeSlug}</span>` : ''}
+            </div>
+          </div>
+          <div class="portal-card-footer">
+            <span>Xem &amp; chọn ảnh</span>
+            <span class="portal-card-arrow">→</span>
+          </div>
         </div>
       `;
 
+      const coverWrap = a.querySelector('.portal-card-cover-wrap');
+      const coverImg = a.querySelector('.portal-card-cover-img');
+      const countBadge = a.querySelector('.portal-card-count-badge');
+
+      const applyCoverImage = (url, fallbackUrl) => {
+        if (!url || !coverImg) return;
+        coverImg.onload = () => {
+          coverImg.classList.add('is-loaded');
+          coverWrap?.classList.remove('is-loading');
+          coverWrap?.classList.add('has-photo');
+        };
+        coverImg.onerror = () => {
+          if (fallbackUrl && coverImg.src !== fallbackUrl) {
+            coverImg.src = fallbackUrl;
+          } else {
+            coverWrap?.classList.remove('is-loading');
+          }
+        };
+        coverImg.src = url;
+      };
+
+      if (initialCover) {
+        applyCoverImage(initialCover, initialFallback);
+      } else if (item.folderId) {
+        this.fetchPortalAlbumCover(item, applyCoverImage, coverWrap, countBadge);
+      } else {
+        coverWrap?.classList.remove('is-loading');
+      }
+
       this.portalAlbumsGrid.appendChild(a);
+    }
+  }
+
+  getCachedAlbumCover(item) {
+    if (!item) return {};
+    let coverUrl = item.coverUrl || '';
+    let fallbackUrl = item.coverFallbackUrl || '';
+    let photoCount = item.photoCount || 0;
+
+    if (item.folderId) {
+      try {
+        const raw = localStorage.getItem(`studio_album_cover_${item.folderId}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (!coverUrl && parsed.coverUrl) coverUrl = parsed.coverUrl;
+          if (!fallbackUrl && parsed.fallbackUrl) fallbackUrl = parsed.fallbackUrl;
+          if (!photoCount && parsed.photoCount) photoCount = parsed.photoCount;
+        }
+      } catch {}
+    }
+    return { coverUrl, fallbackUrl, photoCount };
+  }
+
+  saveCachedAlbumCover(folderId, firstPhoto, photoCount) {
+    if (!folderId || !firstPhoto) return null;
+    const coverUrl = firstPhoto.gridUrl || firstPhoto.thumbnailLink || (firstPhoto.id ? `https://drive.google.com/thumbnail?id=${firstPhoto.id}&sz=w800` : '');
+    const fallbackUrl = firstPhoto.id ? `https://lh3.googleusercontent.com/d/${firstPhoto.id}=w800` : '';
+    if (!coverUrl) return null;
+
+    const payload = { coverUrl, fallbackUrl, photoCount: photoCount || 0, updatedAt: Date.now() };
+    try {
+      localStorage.setItem(`studio_album_cover_${folderId}`, JSON.stringify(payload));
+    } catch {}
+    return payload;
+  }
+
+  async fetchPortalAlbumCover(item, applyCoverImage, coverWrap, countBadge) {
+    const folderId = item.folderId;
+    if (!folderId) return;
+    if (this.portalCoverFetching.has(folderId)) return;
+    this.portalCoverFetching.add(folderId);
+
+    try {
+      const data = await loadDriveAlbum(folderId, STUDIO_CONFIG.googleDriveApiKey, null, false);
+      const photos = data?.photos || [];
+      if (photos.length > 0) {
+        const saved = this.saveCachedAlbumCover(folderId, photos[0], photos.length);
+        if (saved) {
+          item.coverUrl = saved.coverUrl;
+          item.coverFallbackUrl = saved.fallbackUrl;
+          item.photoCount = saved.photoCount;
+          applyCoverImage(saved.coverUrl, saved.fallbackUrl);
+          if (countBadge) {
+            countBadge.textContent = `🖼️ ${photos.length} ảnh`;
+            countBadge.classList.remove('hidden');
+          }
+          return;
+        }
+      }
+      coverWrap?.classList.remove('is-loading');
+    } catch (err) {
+      console.warn(`Không tải được ảnh đại diện cho album ${item.client || folderId}:`, err);
+      coverWrap?.classList.remove('is-loading');
+    } finally {
+      this.portalCoverFetching.delete(folderId);
     }
   }
 
@@ -727,6 +833,10 @@ class AppController {
 
       this.allPhotos = data.photos || [];
       this.folders = data.folders || [];
+
+      if (this.folderId && this.allPhotos.length > 0) {
+        this.saveCachedAlbumCover(this.folderId, this.allPhotos[0], this.allPhotos.length);
+      }
 
       if (this.allPhotos.length === 0) {
         this.showState('empty', 'Thư mục Google Drive này chưa có file ảnh nào.');
