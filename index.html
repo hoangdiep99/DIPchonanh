@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.1">
+  <link rel="stylesheet" href="css/styles.css?v=10.2">
 </head>
 <body>
 
@@ -862,7 +862,10 @@
 
         <div class="panel-card">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-            <h3 style="margin:0;">Quản lý Link Đã Tạo (<span id="admin-history-count" class="tabular-nums">0</span>)</h3>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h3 style="margin:0;">Quản lý Link Đã Tạo (<span id="admin-history-count" class="tabular-nums">0</span>)</h3>
+              <button type="button" id="admin-history-sync-cloud-btn" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" title="Tải danh sách link mới nhất tạo từ máy tính hoặc thiết bị khác">☁️ Đồng bộ Cloud</button>
+            </div>
             <input type="text" id="admin-history-search" class="form-input" style="width:160px;padding:5px 10px;font-size:12px;" placeholder="Tìm theo tên khách...">
           </div>
           <div id="admin-history-list" class="history-list"></div>
@@ -990,6 +993,6 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.1"></script>
+  <script type="module" src="js/app.js?v=10.2"></script>
 </body>
 </html>

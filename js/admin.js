@@ -105,6 +105,114 @@ export class AdminManager {
     return saved;
   }
 
+  async syncAdminHistoryToCloud() {
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (!webhookUrl || !Array.isArray(this.history) || this.history.length === 0) return;
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_admin_history',
+          history: this.history,
+        }),
+      });
+    } catch (e) {
+      console.warn('Lỗi đồng bộ lịch sử admin lên Cloud:', e);
+    }
+  }
+
+  async syncAdminHistoryFromCloud(showToast = false) {
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (!webhookUrl) {
+      if (showToast) alert('Chưa cấu hình Google Apps Script Webhook trong config.js!');
+      return;
+    }
+
+    if (showToast && this.btnSyncCloud) {
+      this.btnSyncCloud.disabled = true;
+      this.btnSyncCloud.textContent = '⏳ Đang tải...';
+    }
+
+    try {
+      const resp = await fetch(`${webhookUrl}?action=get_admin_history&_t=${Date.now()}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (data && data.status === 'success' && Array.isArray(data.history)) {
+        let changed = false;
+        const cloudList = data.history;
+
+        // Gộp dữ liệu từ cloud vào local
+        const map = new Map();
+        for (const item of this.history) {
+          const key = item.folderId || item.slug;
+          if (key) map.set(key, item);
+        }
+
+        for (const cItem of cloudList) {
+          const key = cItem.folderId || cItem.slug;
+          if (!key) continue;
+          if (!map.has(key)) {
+            map.set(key, cItem);
+            changed = true;
+          } else {
+            const localItem = map.get(key);
+            if ((cItem.updatedAt || 0) > (localItem.updatedAt || 0)) {
+              map.set(key, { ...localItem, ...cItem });
+              changed = true;
+            }
+          }
+        }
+
+        if (changed || this.history.length !== map.size) {
+          this.history = Array.from(map.values()).slice(0, 50);
+          try {
+            localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(this.history));
+          } catch {}
+          this.renderHistory();
+        }
+
+        // Nếu máy tính hiện tại có nhiều album hơn đám mây, tự động đẩy lên để điện thoại thấy được
+        if (map.size > cloudList.length) {
+          this.syncAdminHistoryToCloud();
+        }
+
+        if (showToast && this.btnSyncCloud) {
+          this.btnSyncCloud.textContent = '✅ Đã đồng bộ';
+          setTimeout(() => {
+            if (this.btnSyncCloud) {
+              this.btnSyncCloud.textContent = '☁️ Đồng bộ Cloud';
+              this.btnSyncCloud.disabled = false;
+            }
+          }, 2000);
+        }
+      } else {
+        if (this.history.length > 0) {
+          this.syncAdminHistoryToCloud();
+        }
+        if (showToast && this.btnSyncCloud) {
+          this.btnSyncCloud.textContent = '☁️ Đồng bộ Cloud';
+          this.btnSyncCloud.disabled = false;
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi khi tải lịch sử admin từ Cloud:', err);
+      if (this.history.length > 0) {
+        this.syncAdminHistoryToCloud();
+      }
+      if (showToast && this.btnSyncCloud) {
+        this.btnSyncCloud.textContent = '⚠️ Lỗi đồng bộ';
+        setTimeout(() => {
+          if (this.btnSyncCloud) {
+            this.btnSyncCloud.textContent = '☁️ Đồng bộ Cloud';
+            this.btnSyncCloud.disabled = false;
+          }
+        }, 2000);
+      }
+    }
+  }
+
   saveHistory(item) {
     if (this.editingIndex >= 0 && this.editingIndex < this.history.length) {
       // Chế độ chỉnh sửa
@@ -121,6 +229,7 @@ export class AdminManager {
       // ignore
     }
     this.renderHistory();
+    this.syncAdminHistoryToCloud();
   }
 
   deleteHistoryItem(index) {
@@ -131,6 +240,7 @@ export class AdminManager {
       // ignore
     }
     this.renderHistory();
+    this.syncAdminHistoryToCloud();
   }
 
   // --- ĐĂNG NHẬP CÁ NHÂN TIỆN LỢI (1-CHẠM & GHI NHỚ VĨNH VIỄN) ---
@@ -187,6 +297,7 @@ export class AdminManager {
       this.history = this.loadHistory();
       this.renderPresets();
       this.renderHistory();
+      this.syncAdminHistoryFromCloud(false);
     }
   }
 
@@ -272,6 +383,11 @@ export class AdminManager {
     this.historyListEl = this.container.querySelector('#admin-history-list');
     this.historyCountEl = this.container.querySelector('#admin-history-count');
     this.historySearchInput = this.container.querySelector('#admin-history-search');
+    this.btnSyncCloud = this.container.querySelector('#admin-history-sync-cloud-btn');
+
+    this.btnSyncCloud?.addEventListener('click', () => {
+      this.syncAdminHistoryFromCloud(true);
+    });
 
     this.historySearchInput?.addEventListener('input', () => {
       this.historySearchQuery = this.historySearchInput.value.trim().toLowerCase();

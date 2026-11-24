@@ -66,6 +66,15 @@ function doGet(e) {
       });
     }
 
+    // 0.2. Phân hệ Đồng Bộ Danh Sách Album Cho Admin Đa Thiết Bị (?action=get_admin_history)
+    if (action === 'get_admin_history') {
+      var historyData = loadCloudAdminHistory();
+      return jsonResponse({
+        status: 'success',
+        history: historyData || []
+      });
+    }
+
     if (!folderId) {
       return jsonResponse({
         status: 'error',
@@ -198,6 +207,15 @@ function doPost(e) {
       if ((slugCluster || folderIdCluster) && Array.isArray(clustersList) && clustersList.length > 0) {
         saveCloudClusters(slugCluster, folderIdCluster, clustersList);
         return jsonResponse({ status: 'success', message: 'Đã lưu cụm khuôn mặt lên đám mây' });
+      }
+    }
+
+    // 0.2. Phân hệ Lưu Danh Sách Album Admin Đa Thiết Bị (action=save_admin_history)
+    if (data.action === 'save_admin_history') {
+      var historyList = data.history || [];
+      if (Array.isArray(historyList)) {
+        saveCloudAdminHistory(historyList);
+        return jsonResponse({ status: 'success', message: 'Đã lưu lịch sử album admin lên đám mây' });
       }
     }
 
@@ -445,6 +463,50 @@ function loadCloudClusters(slug, folderId) {
   } catch (e) {}
 
   return null;
+}
+
+/**
+ * Lưu danh sách album admin vào RAM cache và Google Drive để đồng bộ máy tính & điện thoại
+ */
+function saveCloudAdminHistory(historyList) {
+  var key = 'admin_history';
+  var jsonStr = JSON.stringify(historyList);
+  putToCache(key, jsonStr, 21600);
+  try {
+    var fileName = '_studio_admin_history.json';
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      var f = files.next();
+      f.setContent(jsonStr);
+    } else {
+      DriveApp.createFile(fileName, jsonStr, MimeType.PLAIN_TEXT);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Đọc danh sách album admin từ RAM cache hoặc Google Drive
+ */
+function loadCloudAdminHistory() {
+  var key = 'admin_history';
+  var cached = getFromCache(key);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {}
+  }
+  try {
+    var fileName = '_studio_admin_history.json';
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      var content = files.next().getBlob().getDataAsString();
+      if (content) {
+        putToCache(key, content, 21600);
+        return JSON.parse(content);
+      }
+    }
+  } catch (e) {}
+  return [];
 }
 
 function saveToSheet(data) {
