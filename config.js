@@ -17,10 +17,9 @@ export const STUDIO_CONFIG = {
   googleSheetsWebhookUrl: 'https://script.google.com/macros/s/AKfycbxEc7-iHeR8HANyhJmVcuuPbM3ginYk48XgrN9upQB4Ya5laz2LAZj4zM4O_ILUnBoX/exec',
 
   // Tài khoản đăng nhập trang Quản trị Studio (#admin)
-  // Studio có thể đổi mật khẩu tại đây
+  // Mật khẩu được lưu & xác thực bí mật 100% trên Google Apps Script (không lưu công khai trên GitHub)
   adminAuth: {
     username: 'hoangdiep',
-    password: 'diep2026',
   },
 
   // (Tùy chọn) Gửi thẳng thông báo về Telegram Bot từ trình duyệt.

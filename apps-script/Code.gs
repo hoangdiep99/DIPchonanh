@@ -23,6 +23,11 @@ const SPREADSHEET_ID = '';
 const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
 const TELEGRAM_CHAT_ID = '2062937107';
 
+// Tài khoản & Mật khẩu Admin mặc định (Lưu bí mật trên máy chủ Google, người ngoài không thể xem)
+// Khi bạn bấm "Đổi mật khẩu" trong #admin, mật khẩu mới sẽ được lưu vào PropertiesService của Google
+const DEFAULT_ADMIN_USER = 'hoangdiep';
+const DEFAULT_ADMIN_PASS = 'diep2026';
+
 /**
  * GET:
  * 1. Đọc danh sách file ảnh (có RAM cache 6 tiếng siêu tốc)
@@ -232,6 +237,37 @@ function doPost(e) {
         saveCloudAdminHistory(historyList);
         return jsonResponse({ status: 'success', message: 'Đã lưu lịch sử album admin lên đám mây' });
       }
+    }
+
+    // 0.3. Phân hệ Xác Thực Đăng Nhập Admin Bí Mật Trên Máy Chủ Google (action=admin_login)
+    if (data.action === 'admin_login') {
+      var inputUser = (data.username || DEFAULT_ADMIN_USER).toString().trim().toLowerCase();
+      var inputPass = (data.password || '').toString().trim();
+      var props = PropertiesService.getScriptProperties();
+      var savedUser = (props.getProperty('studio_admin_user') || DEFAULT_ADMIN_USER).toLowerCase();
+      var savedPass = props.getProperty('studio_admin_pass') || DEFAULT_ADMIN_PASS;
+
+      if (inputPass && inputPass === savedPass && inputUser === savedUser) {
+        return jsonResponse({ status: 'success', authenticated: true });
+      }
+      return jsonResponse({ status: 'error', authenticated: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' });
+    }
+
+    // 0.4. Phân hệ Đổi Mật Khẩu Admin Đồng Bộ Mọi Thiết Bị (action=admin_change_pass)
+    if (data.action === 'admin_change_pass') {
+      var oldPass = (data.oldPassword || '').toString().trim();
+      var newPass = (data.newPassword || '').toString().trim();
+      var propsAuth = PropertiesService.getScriptProperties();
+      var currentPass = propsAuth.getProperty('studio_admin_pass') || DEFAULT_ADMIN_PASS;
+
+      if (!oldPass || oldPass !== currentPass) {
+        return jsonResponse({ status: 'error', message: 'Mật khẩu hiện tại không đúng!' });
+      }
+      if (!newPass || newPass.length < 4) {
+        return jsonResponse({ status: 'error', message: 'Mật khẩu mới phải có ít nhất 4 ký tự!' });
+      }
+      propsAuth.setProperty('studio_admin_pass', newPass);
+      return jsonResponse({ status: 'success', message: 'Đã đổi mật khẩu Studio trên Đám mây thành công!' });
     }
 
     // 1. Phân hệ Lưu Nháp Đa Thiết Bị lên đám mây

@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.14';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.14';
-import { FaceFilterEngine } from './face-filter.js?v=10.14';
+import { STUDIO_CONFIG } from '../config.js?v=10.15';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.15';
+import { FaceFilterEngine } from './face-filter.js?v=10.15';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -391,23 +391,75 @@ export class AdminManager {
     this.checkAuthState();
   }
 
-  handleLogin() {
+  async handleLogin() {
     const p = this.passwordInput?.value ? this.passwordInput.value.trim() : '';
-    const u = this.usernameInput?.value ? this.usernameInput.value.trim().toLowerCase() : 'hoangdiep';
+    const u = this.usernameInput?.value
+      ? this.usernameInput.value.trim().toLowerCase()
+      : (STUDIO_CONFIG.adminAuth?.username || 'hoangdiep').toLowerCase();
 
-    const validUser = (STUDIO_CONFIG.adminAuth?.username || 'hoangdiep').toLowerCase();
-    const customPass = localStorage.getItem(ADMIN_CUSTOM_PASS_KEY);
-    const validPass = customPass || STUDIO_CONFIG.adminAuth?.password || 'diep2026';
+    if (!p) return;
 
-    // Đăng nhập thành công nếu đúng mã PIN (dù có nhập username hay không)
-    if (p === validPass && (u === validUser || !this.usernameInput)) {
-      const remember = this.rememberCheckbox ? this.rememberCheckbox.checked : true;
-      this.grantAccess(remember);
-    } else {
-      this.loginErrorMsg?.classList.remove('hidden');
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    const submitBtn = this.loginForm?.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn ? submitBtn.textContent : '';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⏳ Đang xác thực bảo mật...';
+    }
+    this.loginErrorMsg?.classList.add('hidden');
+
+    try {
+      if (!webhookUrl) {
+        throw new Error('Chưa cấu hình Google Apps Script Webhook để xác thực!');
+      }
+
+      const resp = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'admin_login',
+          username: u,
+          password: p,
+        }),
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+
+      if (json && json.authenticated === true) {
+        const remember = this.rememberCheckbox ? this.rememberCheckbox.checked : true;
+        this.grantAccess(remember);
+        return;
+      }
+
+      if (json && json.authenticated === false) {
+        if (this.loginErrorMsg) {
+          this.loginErrorMsg.textContent = json.message || 'Mã PIN hoặc mật khẩu không chính xác!';
+          this.loginErrorMsg.classList.remove('hidden');
+        }
+      } else {
+        if (this.loginErrorMsg) {
+          this.loginErrorMsg.textContent =
+            'Google Apps Script chưa cập nhật bản xác thực mới. Vui lòng dán Code.gs mới và Triển khai phiên bản mới!';
+          this.loginErrorMsg.classList.remove('hidden');
+        }
+      }
+
       if (this.passwordInput) {
         this.passwordInput.value = '';
         this.passwordInput.focus();
+      }
+    } catch (err) {
+      console.error('Lỗi xác thực đăng nhập Admin:', err);
+      if (this.loginErrorMsg) {
+        this.loginErrorMsg.textContent = 'Không thể kết nối máy chủ xác thực Google. Vui lòng thử lại!';
+        this.loginErrorMsg.classList.remove('hidden');
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText || 'Mở Bảng Quản Trị Studio';
       }
     }
   }
@@ -418,21 +470,48 @@ export class AdminManager {
     this.checkAuthState();
   }
 
-  handleChangePassword() {
-    const currentPass = localStorage.getItem(ADMIN_CUSTOM_PASS_KEY) || STUDIO_CONFIG.adminAuth?.password || 'diep2026';
+  async handleChangePassword() {
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (!webhookUrl) {
+      alert('Chưa cấu hình Google Apps Script Webhook!');
+      return;
+    }
+
     const oldInput = prompt('Nhập mật khẩu hiện tại của bạn:', '');
     if (oldInput === null) return;
-    if (oldInput !== currentPass) {
-      alert('Mật khẩu hiện tại không đúng!');
+    const newPass = prompt('Nhập mật khẩu mới muốn đặt (tối thiểu 4 ký tự):', '');
+    if (newPass === null) return;
+    if (!newPass.trim() || newPass.trim().length < 4) {
+      alert('Mật khẩu mới phải có ít nhất 4 ký tự!');
       return;
     }
-    const newPass = prompt('Nhập mật khẩu mới muốn đặt:', '');
-    if (!newPass || !newPass.trim()) {
-      alert('Mật khẩu không được để trống!');
+    const confirmPass = prompt('Nhập lại mật khẩu mới để xác nhận:', '');
+    if (confirmPass !== newPass) {
+      alert('Mật khẩu xác nhận không khớp!');
       return;
     }
-    localStorage.setItem(ADMIN_CUSTOM_PASS_KEY, newPass.trim());
-    alert('✅ Đã đổi mật khẩu Studio thành công!');
+
+    try {
+      const resp = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'admin_change_pass',
+          oldPassword: oldInput.trim(),
+          newPassword: newPass.trim(),
+        }),
+      });
+      const json = await resp.json();
+      if (json && json.status === 'success') {
+        localStorage.removeItem(ADMIN_CUSTOM_PASS_KEY);
+        alert('✅ Đã đổi mật khẩu Studio trên Đám mây thành công! Áp dụng ngay cho mọi thiết bị (máy tính & điện thoại).');
+      } else {
+        alert(`⚠️ ${json?.message || 'Không thể đổi mật khẩu. Hãy chắc chắn bạn đã cập nhật Code.gs mới lên Google Apps Script!'}`);
+      }
+    } catch (err) {
+      console.error('Lỗi đổi mật khẩu:', err);
+      alert('⚠️ Lỗi kết nối máy chủ Google khi đổi mật khẩu. Vui lòng thử lại!');
+    }
   }
 
   // --- GIAO DIỆN FORM VÀ CHỈNH SỬA LINK ---
