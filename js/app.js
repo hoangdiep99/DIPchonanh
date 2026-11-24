@@ -1,15 +1,15 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.22';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.22';
-import { GalleryGrid } from './gallery.js?v=10.22';
-import { LightboxModal } from './lightbox.js?v=10.22';
-import { StorageManager } from './storage.js?v=10.22';
-import { FaceFilterEngine } from './face-filter.js?v=10.22';
-import { ExportService } from './export.js?v=10.22';
-import { AdminManager } from './admin.js?v=10.22';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.22';
+import { STUDIO_CONFIG } from '../config.js?v=10.23';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.23';
+import { GalleryGrid } from './gallery.js?v=10.23';
+import { LightboxModal } from './lightbox.js?v=10.23';
+import { StorageManager } from './storage.js?v=10.23';
+import { FaceFilterEngine } from './face-filter.js?v=10.23';
+import { ExportService } from './export.js?v=10.23';
+import { AdminManager } from './admin.js?v=10.23';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.23';
 
 class AppController {
   constructor() {

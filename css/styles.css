@@ -4237,3 +4237,121 @@ a {
   padding: 4px 10px;
   border-radius: var(--radius-pill);
 }
+
+
+/* ==========================================================================
+   Tối ưu hóa không gian hiển thị ảnh & Thanh công cụ nổi trên Mobile (v10.23)
+   ========================================================================== */
+@media (max-width: 640px) {
+  /* 1. Thu gọn Header để tăng không gian xem ảnh */
+  .header-inner {
+    padding: 6px 10px 4px !important;
+    gap: 4px !important;
+  }
+  .client-heading {
+    font-size: 15px !important;
+  }
+  .header-sub-row {
+    margin-top: 2px !important;
+    gap: 4px !important;
+  }
+  .meta-pill {
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+  }
+  .search-box {
+    padding: 4px 10px !important;
+  }
+  .search-input {
+    font-size: 12px !important;
+  }
+  .sort-select {
+    padding: 4px 8px !important;
+    font-size: 11.5px !important;
+  }
+
+  /* 2. Thu gọn Banner People Bar & AI Quality Banner */
+  .people-bar {
+    margin: 4px auto 0 !important;
+    padding: 0 8px !important;
+  }
+  .people-bar-card {
+    padding: 4px 8px !important;
+    gap: 6px !important;
+  }
+  .people-chip {
+    padding: 3px 8px !important;
+    font-size: 11.5px !important;
+  }
+  .quality-banner {
+    margin: 4px auto 0 !important;
+    padding: 0 8px !important;
+  }
+  .quality-card {
+    padding: 6px 10px !important;
+  }
+  .quality-chips {
+    margin-top: 6px !important;
+    gap: 4px !important;
+  }
+  .quality-chip {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+  .quality-hint {
+    display: none !important; /* Ẩn dòng ghi chú phụ để tiết kiệm chiều cao */
+  }
+
+  /* 3. Tối ưu lưới ảnh: viền lề gọn hơn để ảnh to & rõ hơn */
+  .gallery-main {
+    padding: 6px 4px calc(140px + var(--bottom-safe)) !important;
+  }
+
+  /* 4. Tối ưu Floating Bottom Bar: 3 nút ngang đều nhau 100%, không bị tràn/khuất */
+  .floating-bar-wrap {
+    padding: 0 6px !important;
+    bottom: calc(6px + var(--bottom-safe)) !important;
+  }
+  .floating-bar {
+    padding: 6px 8px !important;
+    gap: 5px !important;
+    border-radius: 14px !important;
+  }
+  .bar-status-row {
+    gap: 4px !important;
+  }
+  .counter-pill {
+    padding: 4px 8px !important;
+    font-size: 11.5px !important;
+  }
+  .quick-mode-pill {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+  .filter-pill {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+
+  /* 3 NÚT DƯỚI CÙNG: Grid 3 cột đều nhau, chữ gọn gàng, vừa vặn mọi màn hình */
+  .bar-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 5px !important;
+    width: 100% !important;
+  }
+  .bar-actions .btn {
+    padding: 8px 4px !important;
+    font-size: 11.5px !important;
+    border-radius: 9px !important;
+    gap: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .bar-actions .btn svg {
+    width: 13.5px !important;
+    height: 13.5px !important;
+    flex-shrink: 0 !important;
+  }
+}
