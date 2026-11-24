@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.17';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.17';
-import { GalleryGrid } from './gallery.js?v=10.17';
-import { LightboxModal } from './lightbox.js?v=10.17';
-import { StorageManager } from './storage.js?v=10.17';
-import { FaceFilterEngine } from './face-filter.js?v=10.17';
-import { ExportService } from './export.js?v=10.17';
-import { AdminManager } from './admin.js?v=10.17';
+import { STUDIO_CONFIG } from '../config.js?v=10.18';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.18';
+import { GalleryGrid } from './gallery.js?v=10.18';
+import { LightboxModal } from './lightbox.js?v=10.18';
+import { StorageManager } from './storage.js?v=10.18';
+import { FaceFilterEngine } from './face-filter.js?v=10.18';
+import { ExportService } from './export.js?v=10.18';
+import { AdminManager } from './admin.js?v=10.18';
 
 class AppController {
   constructor() {
@@ -1937,7 +1937,7 @@ class AppController {
     });
 
     try {
-      const defaultThreshold = STUDIO_CONFIG.faceAI.defaultThreshold || 0.52;
+      const defaultThreshold = STUDIO_CONFIG.faceAI.defaultThreshold || 0.60;
       const clusters = await this.faceEngine.scanAndClusterAlbum(
         this.allPhotos,
         (p) => {
@@ -2031,7 +2031,7 @@ class AppController {
             });
           }
         },
-        defaultThreshold
+        STUDIO_CONFIG.faceAI.clusterThreshold || 0.52
       );
 
       this.faceClusters = clusters;
@@ -2532,7 +2532,7 @@ class AppController {
 
       this.faceScoresMap = scores;
       this.isScanningFace = false;
-      const defaultThreshold = STUDIO_CONFIG.faceAI.defaultThreshold || 0.52;
+      const defaultThreshold = STUDIO_CONFIG.faceAI.defaultThreshold || 0.60;
       this.activeFaceFilter = {
         targetEmbedding: embedding,
         avatarUrl,
@@ -3275,7 +3275,7 @@ class AppController {
       });
 
       this.faceScoresMap = scores;
-      const defaultThreshold = STUDIO_CONFIG.faceAI.defaultThreshold || 0.52;
+      const defaultThreshold = STUDIO_CONFIG.faceAI.defaultThreshold || 0.60;
       this.activeFaceFilter = {
         targetEmbedding: face.embedding,
         avatarUrl: avatarDataUrl,

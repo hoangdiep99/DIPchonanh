@@ -85,6 +85,8 @@ export const STUDIO_CONFIG = {
     // Số ảnh quét mỗi lượt (batch) để tránh đơ giao diện điện thoại
     batchSize: 6,
     // Ngưỡng tương đồng mặc định (0.0 - 1.0). Khuyến nghị 0.50 - 0.58 cho ảnh cưới/chân dung
-    defaultThreshold: 0.52,
+    defaultThreshold: 0.60,
+    // Ngưỡng gom cụm nhân vật khi quét album (giữ thấp để không tách 1 người thành nhiều nhóm)
+    clusterThreshold: 0.52,
   },
 };

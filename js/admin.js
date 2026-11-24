@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.17';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.17';
-import { FaceFilterEngine } from './face-filter.js?v=10.17';
+import { STUDIO_CONFIG } from '../config.js?v=10.18';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.18';
+import { FaceFilterEngine } from './face-filter.js?v=10.18';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -1121,7 +1121,7 @@ export class AdminManager {
             }
           }
         },
-        STUDIO_CONFIG.faceAI.defaultThreshold || 0.52
+        STUDIO_CONFIG.faceAI.clusterThreshold || 0.52
       );
 
       // 4. Lưu kết quả vào LocalStorage & Đồng bộ lên Webhook
