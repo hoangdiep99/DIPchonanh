@@ -316,12 +316,12 @@ export async function loadDriveAlbum(rootFolderId, apiKey, onProgress, forceRefr
   if (!forceRefresh) {
     const cached = getCachedAlbum(rootFolderId);
     if (cached) {
-      onProgress?.('Đang tải tức thì từ bộ nhớ đệm (Cache)...');
+      safeProgress?.('Đang tải tức thì từ bộ nhớ đệm (Cache)...');
       return cached;
     }
   }
 
-  onProgress?.('Đang kết nối Google Drive API v3...');
+  safeProgress?.('Đang kết nối Google Drive API v3...');
   const rootChildren = await listFolderChildren(rootFolderId, activeKey);
 
   const subFolders = rootChildren
@@ -349,7 +349,7 @@ export async function loadDriveAlbum(rootFolderId, apiKey, onProgress, forceRefr
 
   // Tải song song có kiểm soát (tối đa 4 thư mục con cùng lúc)
   if (subFolders.length > 0) {
-    onProgress?.(`Đang tải ${subFolders.length} thư mục phân cảnh...`);
+    safeProgress?.(`Đang tải ${subFolders.length} thư mục phân cảnh...`);
     const concurrency = 4;
     let index = 0;
 

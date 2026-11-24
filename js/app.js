@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=9.7';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=9.7';
-import { GalleryGrid } from './gallery.js?v=9.7';
-import { LightboxModal } from './lightbox.js?v=9.7';
-import { StorageManager } from './storage.js?v=9.7';
-import { FaceFilterEngine } from './face-filter.js?v=9.7';
-import { ExportService } from './export.js?v=9.7';
-import { AdminManager } from './admin.js?v=9.7';
+import { STUDIO_CONFIG } from '../config.js?v=9.8';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=9.8';
+import { GalleryGrid } from './gallery.js?v=9.8';
+import { LightboxModal } from './lightbox.js?v=9.8';
+import { StorageManager } from './storage.js?v=9.8';
+import { FaceFilterEngine } from './face-filter.js?v=9.8';
+import { ExportService } from './export.js?v=9.8';
+import { AdminManager } from './admin.js?v=9.8';
 
 class AppController {
   constructor() {
@@ -1011,6 +1011,17 @@ class AppController {
     this.faceBtnTriggerBrowserAi = document.getElementById('face-btn-trigger-browser-ai');
     this.ghActionsPollTimer = null;
 
+    // Các nút thao tác quét: Bắt đầu, Tạm dừng, Tiếp tục, Dừng & Gom cụm
+    this.faceScanControlsBar = document.getElementById('face-scan-controls-bar');
+    this.faceBtnStartScan = document.getElementById('face-btn-start-scan');
+    this.faceBtnPauseScan = document.getElementById('face-btn-pause-scan');
+    this.faceBtnResumeScan = document.getElementById('face-btn-resume-scan');
+    this.faceBtnStopScan = document.getElementById('face-btn-stop-scan');
+    this.faceBtnFooterPause = document.getElementById('face-btn-footer-pause');
+    this.faceBtnFooterResume = document.getElementById('face-btn-footer-resume');
+    this.isPausedFace = false;
+    this.lastScannedCount = 0;
+
     // Clusters step elements
     this.faceStepClusters = document.getElementById('face-step-clusters');
     this.faceClustersGrid = document.getElementById('face-clusters-grid');
@@ -1023,6 +1034,7 @@ class AppController {
     this.facePillText = document.getElementById('face-pill-text');
     this.facePillFill = document.getElementById('face-pill-fill');
     this.facePillOpen = document.getElementById('face-pill-open');
+    this.facePillPauseBtn = document.getElementById('face-pill-pause-btn');
     this.isScanningFace = false;
 
     document.getElementById('btn-open-face-modal').addEventListener('click', () => {
@@ -1057,6 +1069,39 @@ class AppController {
       this.restoreFaceModal();
     });
 
+    this.facePillPauseBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.isPausedFace) {
+        this.resumeFaceScan();
+      } else {
+        this.pauseFaceScan();
+      }
+    });
+
+    this.faceBtnStartScan?.addEventListener('click', () => {
+      this.startAutoClusterScan();
+    });
+
+    this.faceBtnPauseScan?.addEventListener('click', () => {
+      this.pauseFaceScan();
+    });
+
+    this.faceBtnFooterPause?.addEventListener('click', () => {
+      this.pauseFaceScan();
+    });
+
+    this.faceBtnResumeScan?.addEventListener('click', () => {
+      this.resumeFaceScan();
+    });
+
+    this.faceBtnFooterResume?.addEventListener('click', () => {
+      this.resumeFaceScan();
+    });
+
+    this.faceBtnStopScan?.addEventListener('click', () => {
+      this.stopFaceScan();
+    });
+
     this.faceBtnRescan?.addEventListener('click', () => {
       this.startAutoClusterScan();
     });
@@ -1083,6 +1128,74 @@ class AppController {
       if (this.faceNoScanArea) this.faceNoScanArea.classList.add('hidden');
       this.startAutoClusterScan();
     });
+  }
+
+  updateFaceScanControls(state) {
+    if (!this.faceBtnStartScan) return;
+    if (state === 'running') {
+      this.faceBtnStartScan.classList.add('hidden');
+      this.faceBtnPauseScan?.classList.remove('hidden');
+      this.faceBtnResumeScan?.classList.add('hidden');
+      this.faceBtnStopScan?.classList.remove('hidden');
+      this.faceBtnFooterPause?.classList.remove('hidden');
+      this.faceBtnFooterResume?.classList.add('hidden');
+      if (this.facePillPauseBtn) this.facePillPauseBtn.textContent = '⏸️';
+    } else if (state === 'paused') {
+      this.faceBtnStartScan.classList.add('hidden');
+      this.faceBtnPauseScan?.classList.add('hidden');
+      this.faceBtnResumeScan?.classList.remove('hidden');
+      this.faceBtnStopScan?.classList.remove('hidden');
+      this.faceBtnFooterPause?.classList.add('hidden');
+      this.faceBtnFooterResume?.classList.remove('hidden');
+      if (this.facePillPauseBtn) this.facePillPauseBtn.textContent = '▶️';
+    } else {
+      // idle or done
+      this.faceBtnStartScan.classList.remove('hidden');
+      this.faceBtnPauseScan?.classList.add('hidden');
+      this.faceBtnResumeScan?.classList.add('hidden');
+      this.faceBtnStopScan?.classList.add('hidden');
+      this.faceBtnFooterPause?.classList.add('hidden');
+      this.faceBtnFooterResume?.classList.add('hidden');
+    }
+  }
+
+  pauseFaceScan() {
+    if (!this.isScanningFace) return;
+    this.isPausedFace = true;
+    this.faceEngine?.pauseScan();
+    this.updateFaceScanControls('paused');
+    this.updateFaceScanUI({
+      statusTitle: 'Đã tạm dừng quét khuôn mặt',
+      statusDesc: 'Tiến trình quét đang tạm dừng. Bấm "Tiếp tục quét" để AI tiếp tục nhận diện ảnh tiếp theo.',
+      badge: 'Tạm dừng',
+      badgeType: 'warning',
+    });
+    if (this.facePillText) {
+      this.facePillText.textContent = `⏸️ Đã tạm dừng: ${this.lastScannedCount || 0}/${this.allPhotos ? this.allPhotos.length : 0}`;
+    }
+    this.showToast('Đã tạm dừng quét!', 'info');
+  }
+
+  resumeFaceScan() {
+    if (!this.isScanningFace) return;
+    this.isPausedFace = false;
+    this.faceEngine?.resumeScan();
+    this.updateFaceScanControls('running');
+    this.updateFaceScanUI({
+      statusTitle: 'Đang tiếp tục quét & nhận diện...',
+      statusDesc: 'Đang gửi ảnh tới mạng nơ-ron WebGL/GPU để phân tích...',
+      badge: 'Đang quét',
+      badgeType: 'active',
+    });
+    this.showToast('Tiếp tục quét AI...', 'info');
+  }
+
+  stopFaceScan() {
+    if (!this.isScanningFace) return;
+    this.faceEngine?.stopScan();
+    this.isPausedFace = false;
+    this.showToast('Đang dừng và gom nhóm các khuôn mặt đã phát hiện...', 'info');
+  }
   }
 
   minimizeFaceModal() {
@@ -1251,6 +1364,7 @@ class AppController {
     }
     if (this.faceGhActionsArea) this.faceGhActionsArea.classList.add('hidden');
     if (this.faceNoScanArea) this.faceNoScanArea.classList.remove('hidden');
+    this.updateFaceScanControls('idle');
 
     const totalPhotos = this.allPhotos ? this.allPhotos.length : 0;
     const isFailed = run && run.conclusion === 'failure';
@@ -1274,6 +1388,12 @@ class AppController {
     if (this.ghActionsPollTimer) {
       clearInterval(this.ghActionsPollTimer);
       this.ghActionsPollTimer = null;
+    }
+    if (this.isScanningFace) {
+      this.faceEngine?.stopScan();
+      this.isScanningFace = false;
+      this.isPausedFace = false;
+      this.updateFaceScanControls('idle');
     }
     this.faceModal.classList.add('hidden');
     document.body.style.overflow = '';
@@ -1332,7 +1452,12 @@ class AppController {
 
   async startAutoClusterScan() {
     this.showFaceStep('scan');
+    if (this.faceNoScanArea) this.faceNoScanArea.classList.add('hidden');
+    if (this.faceGhActionsArea) this.faceGhActionsArea.classList.add('hidden');
     this.isScanningFace = true;
+    this.isPausedFace = false;
+    this.updateFaceScanControls('running');
+
     const totalPhotos = this.allPhotos ? this.allPhotos.length : 0;
     this.updateFaceScanUI({
       percent: 0,
@@ -1357,7 +1482,24 @@ class AppController {
           const faces = p.foundFaces || 0;
           const clustCount = p.clustersCount || 0;
 
+          if (p.phase === 'paused') {
+            this.updateFaceScanControls('paused');
+            this.updateFaceScanUI({
+              percent: pct,
+              statusTitle: 'Đã tạm dừng quét khuôn mặt',
+              statusDesc: p.msg || `Đang tạm dừng (${current}/${total} ảnh). Bấm "Tiếp tục quét" để chạy tiếp.`,
+              badge: 'Tạm dừng',
+              badgeType: 'warning',
+              scanned: current,
+              total,
+              faces,
+              clusters: clustCount,
+            });
+            return;
+          }
+
           if (p.phase === 'init_model') {
+            this.updateFaceScanControls('running');
             this.updateFaceScanUI({
               percent: 5,
               statusTitle: 'Đang nạp mô hình AI...',
@@ -1370,6 +1512,8 @@ class AppController {
               clusters: 0,
             });
           } else if (p.phase === 'cache_loaded') {
+            this.lastScannedCount = current;
+            this.updateFaceScanControls('running');
             this.updateFaceScanUI({
               percent: pct,
               statusTitle: 'Đang đọc bộ nhớ đệm (IndexedDB)...',
@@ -1382,6 +1526,8 @@ class AppController {
               clusters: clustCount,
             });
           } else if (p.phase === 'ai_scanning') {
+            this.lastScannedCount = current;
+            this.updateFaceScanControls('running');
             this.updateFaceScanUI({
               percent: pct,
               statusTitle: 'Đang quét & nhận diện khuôn mặt...',
@@ -1394,6 +1540,7 @@ class AppController {
               clusters: clustCount,
             });
           } else if (p.phase === 'clustering') {
+            this.updateFaceScanControls('running');
             this.updateFaceScanUI({
               percent: 95,
               statusTitle: 'Đang phân tích & gom nhóm người...',
@@ -1424,12 +1571,14 @@ class AppController {
 
       this.faceClusters = clusters;
       this.isScanningFace = false;
+      this.isPausedFace = false;
+      this.updateFaceScanControls('idle');
       this.saveCachedClusters();
       this.renderPeopleBar();
       if (this.faceFloatingPill) this.faceFloatingPill.classList.add('hidden');
 
       if (!clusters || clusters.length === 0) {
-        alert('Không tìm thấy khuôn mặt rõ nét nào trong album.');
+        alert('Không tìm thấy khuôn mặt rõ nét nào trong các ảnh đã quét.');
         this.closeFaceModal();
         return;
       }
@@ -1440,9 +1589,17 @@ class AppController {
       this.showToast(`Phát hiện ${clusters.length} người khác nhau trong album!`, 'success');
     } catch (err) {
       this.isScanningFace = false;
+      this.isPausedFace = false;
+      this.updateFaceScanControls('idle');
       console.error(err);
       alert('Lỗi quét khuôn mặt: ' + err.message);
       this.closeFaceModal();
+    } finally {
+      this.isScanningFace = false;
+      this.isPausedFace = false;
+      this.updateFaceScanControls('idle');
+    }
+  }
     }
   }
 

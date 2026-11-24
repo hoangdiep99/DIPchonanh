@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=9.7">
+  <link rel="stylesheet" href="css/styles.css?v=9.8">
 </head>
 <body>
 
@@ -386,6 +386,22 @@
               </div>
             </div>
 
+            <!-- Thanh Nút Thao Tác Quét AI: Bắt đầu, Tạm dừng, Tiếp tục, Dừng -->
+            <div id="face-scan-controls-bar" class="face-scan-controls-bar" style="margin-top:14px;">
+              <button type="button" id="face-btn-start-scan" class="btn btn-primary btn-sm">
+                <span>⚡</span> Bắt đầu quét khuôn mặt
+              </button>
+              <button type="button" id="face-btn-pause-scan" class="btn btn-warning btn-sm hidden">
+                <span>⏸️</span> Tạm dừng
+              </button>
+              <button type="button" id="face-btn-resume-scan" class="btn btn-primary btn-sm hidden">
+                <span>▶️</span> Tiếp tục quét
+              </button>
+              <button type="button" id="face-btn-stop-scan" class="btn btn-secondary btn-sm hidden">
+                <span>⏹️</span> Dừng & Gom cụm đã quét
+              </button>
+            </div>
+
             <!-- Khu vực Tiến trình GitHub Actions Cloud AI -->
             <div id="face-gh-actions-area" class="face-gh-actions-area hidden">
               <div class="face-gh-actions-banner">
@@ -438,6 +454,8 @@
 
       <div class="modal-footer">
         <button type="button" id="face-btn-back" class="btn btn-secondary btn-sm hidden">Quay lại chọn ảnh</button>
+        <button type="button" id="face-btn-footer-pause" class="btn btn-warning btn-sm hidden">⏸️ Tạm dừng</button>
+        <button type="button" id="face-btn-footer-resume" class="btn btn-primary btn-sm hidden">▶️ Tiếp tục</button>
         <button type="button" id="face-btn-background" class="btn btn-primary btn-sm hidden">⚡ Ẩn bảng (Chạy ngầm)</button>
         <button type="button" id="face-btn-cancel" class="btn btn-ghost btn-sm">Hủy</button>
       </div>
@@ -451,6 +469,7 @@
       <span id="face-pill-text">Đang quét AI: 0 / 0</span>
       <div class="face-pill-track"><div id="face-pill-fill" class="face-pill-fill"></div></div>
     </div>
+    <button type="button" id="face-pill-pause-btn" class="face-pill-btn-icon" title="Tạm dừng / Tiếp tục">⏸️</button>
     <button type="button" id="face-pill-open" class="face-pill-action">Mở lại</button>
   </div>
 
@@ -819,6 +838,14 @@
               <span id="admin-scan-percent" style="font-weight:600;color:var(--ink-primary);">0%</span>
             </div>
 
+            <!-- Nút điều khiển quét Admin: Bắt đầu, Tạm dừng, Tiếp tục, Dừng -->
+            <div id="admin-scan-controls" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+              <button type="button" id="admin-scan-btn-start" class="btn btn-primary btn-sm" style="flex:1;">⚡ Bắt đầu quét AI</button>
+              <button type="button" id="admin-scan-btn-pause" class="btn btn-warning btn-sm hidden" style="flex:1;">⏸️ Tạm dừng</button>
+              <button type="button" id="admin-scan-btn-resume" class="btn btn-primary btn-sm hidden" style="flex:1;">▶️ Tiếp tục</button>
+              <button type="button" id="admin-scan-btn-stop" class="btn btn-ghost btn-sm hidden">⏹️ Dừng quét</button>
+            </div>
+
             <!-- Khung kết quả gương mặt khi quét xong -->
             <div id="admin-scan-result-row" class="hidden" style="margin-top:12px;padding-top:10px;border-top:1px dashed #cbd5e1;">
               <div style="font-size:12px;font-weight:600;color:#0f172a;margin-bottom:6px;">👥 Nhân vật đã nhận diện trong album:</div>
@@ -961,6 +988,6 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=9.7"></script>
+  <script type="module" src="js/app.js?v=9.8"></script>
 </body>
 </html>

@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=9.6';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=9.6';
-import { FaceFilterEngine } from './face-filter.js?v=9.6';
+import { STUDIO_CONFIG } from '../config.js?v=9.8';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=9.8';
+import { FaceFilterEngine } from './face-filter.js?v=9.8';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_REMEMBER_KEY = 'studio_admin_remember';
@@ -300,11 +300,69 @@ export class AdminManager {
     this.scanOpenAlbumBtn = this.container.querySelector('#admin-scan-open-album-btn');
     this.scanRestartBtn = this.container.querySelector('#admin-scan-restart-btn');
 
+    this.adminScanBtnStart = this.container.querySelector('#admin-scan-btn-start');
+    this.adminScanBtnPause = this.container.querySelector('#admin-scan-btn-pause');
+    this.adminScanBtnResume = this.container.querySelector('#admin-scan-btn-resume');
+    this.adminScanBtnStop = this.container.querySelector('#admin-scan-btn-stop');
+
+    this.adminScanBtnStart?.addEventListener('click', () => {
+      if (this.currentScanningFolderId) {
+        this.startAutoScanForAlbum(this.currentScanningFolderId, this.currentScanningSlug, true);
+      }
+    });
+
+    this.adminScanBtnPause?.addEventListener('click', () => {
+      this.faceEngine?.pauseScan();
+      this.updateAdminScanControls('paused');
+      if (this.scanBadge) {
+        this.scanBadge.textContent = 'Tạm dừng';
+        this.scanBadge.style.background = '#fef3c7';
+        this.scanBadge.style.color = '#b45309';
+      }
+      if (this.scanStatusText) this.scanStatusText.textContent = '⏸️ Đã tạm dừng quét AI. Bấm "Tiếp tục" để chạy tiếp.';
+    });
+
+    this.adminScanBtnResume?.addEventListener('click', () => {
+      this.faceEngine?.resumeScan();
+      this.updateAdminScanControls('running');
+      if (this.scanBadge) {
+        this.scanBadge.textContent = 'Đang quét AI...';
+        this.scanBadge.style.background = '#e0f2fe';
+        this.scanBadge.style.color = '#0284c7';
+      }
+      if (this.scanStatusText) this.scanStatusText.textContent = '▶️ Đang tiếp tục quét...';
+    });
+
+    this.adminScanBtnStop?.addEventListener('click', () => {
+      this.faceEngine?.stopScan();
+      this.updateAdminScanControls('idle');
+      if (this.scanStatusText) this.scanStatusText.textContent = '⏹️ Đang dừng quét và gom nhóm các ảnh đã phân tích...';
+    });
+
     this.scanRestartBtn?.addEventListener('click', () => {
       if (this.currentScanningFolderId) {
         this.startAutoScanForAlbum(this.currentScanningFolderId, this.currentScanningSlug, true);
       }
     });
+  }
+
+  updateAdminScanControls(state) {
+    if (state === 'running') {
+      this.adminScanBtnStart?.classList.add('hidden');
+      this.adminScanBtnPause?.classList.remove('hidden');
+      this.adminScanBtnResume?.classList.add('hidden');
+      this.adminScanBtnStop?.classList.remove('hidden');
+    } else if (state === 'paused') {
+      this.adminScanBtnStart?.classList.add('hidden');
+      this.adminScanBtnPause?.classList.add('hidden');
+      this.adminScanBtnResume?.classList.remove('hidden');
+      this.adminScanBtnStop?.classList.remove('hidden');
+    } else {
+      this.adminScanBtnStart?.classList.remove('hidden');
+      this.adminScanBtnPause?.classList.add('hidden');
+      this.adminScanBtnResume?.classList.add('hidden');
+      this.adminScanBtnStop?.classList.add('hidden');
+    }
   }
 
   bindEvents() {
@@ -536,6 +594,7 @@ export class AdminManager {
     }
 
     this.isScanning = true;
+    this.updateAdminScanControls('running');
     if (this.scanBadge) {
       this.scanBadge.textContent = 'Đang quét AI...';
       this.scanBadge.style.background = '#e0f2fe';
@@ -567,6 +626,7 @@ export class AdminManager {
         if (this.scanPercent) this.scanPercent.textContent = '100%';
         if (this.scanStatusText) this.scanStatusText.textContent = '⚠️ Thư mục Google Drive này chưa có file ảnh nào.';
         this.isScanning = false;
+        this.updateAdminScanControls('idle');
         return;
       }
 
@@ -590,6 +650,20 @@ export class AdminManager {
           const total = progress.total || photos.length || 1;
           const current = progress.current || 0;
           const faces = progress.foundFaces || 0;
+          if (progress.phase === 'paused') {
+            this.updateAdminScanControls('paused');
+            if (this.scanBadge) {
+              this.scanBadge.textContent = 'Tạm dừng';
+              this.scanBadge.style.background = '#fef3c7';
+              this.scanBadge.style.color = '#b45309';
+            }
+            if (this.scanStatusText) {
+              this.scanStatusText.textContent = `⏸️ Đã tạm dừng quét (${current}/${total} ảnh). Bấm "Tiếp tục" để chạy tiếp.`;
+            }
+            return;
+          }
+
+          this.updateAdminScanControls('running');
           if (progress.phase === 'ai_scanning' || progress.phase === 'detecting') {
             const pct = 25 + Math.round((current / total) * 65);
             if (this.scanBar) this.scanBar.style.width = `${pct}%`;
@@ -649,6 +723,7 @@ export class AdminManager {
       this.renderScanSuccess(clusterData, slug);
       this.renderHistory();
       this.isScanning = false;
+      this.updateAdminScanControls('idle');
     } catch (err) {
       console.error('Lỗi khi quét AI khuôn mặt trong admin:', err);
       if (this.scanBadge) {
@@ -658,6 +733,7 @@ export class AdminManager {
       }
       if (this.scanStatusText) this.scanStatusText.textContent = `⚠️ Lỗi quét: ${err.message || 'Không thể hoàn tất'}`;
       this.isScanning = false;
+      this.updateAdminScanControls('idle');
     }
   }
 
