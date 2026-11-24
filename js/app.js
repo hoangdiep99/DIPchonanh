@@ -456,12 +456,20 @@ class AppController {
     return item.shortUrl || item.link || baseOrigin;
   }
 
-  mergePortalAlbumLists(lists) {
+  mergePortalAlbumLists(lists, deletedMap = {}) {
     const map = new Map();
+    const isDeleted = (item) => {
+      if (!item) return true;
+      const itemTs = item.updatedAt || 0;
+      const keys = [item.folderId, item.slug].filter(Boolean).map((k) => k.toString().toLowerCase().trim());
+      return keys.some((k) => deletedMap[k] && deletedMap[k] >= itemTs);
+    };
+
     for (const list of lists) {
       if (!Array.isArray(list)) continue;
       for (const item of list) {
-        if (!item || (!item.folderId && !item.slug)) continue;
+        if (!item || item.__deleted || (!item.folderId && !item.slug)) continue;
+        if (isDeleted(item)) continue;
         const key = (item.folderId || item.slug).toString().trim();
         if (!map.has(key)) {
           map.set(key, item);
@@ -477,15 +485,21 @@ class AppController {
   }
 
   async loadPortalAlbums(forceToast = false) {
-    // 1. Nạp tức thì từ config.js + localStorage để hiển thị không độ trễ
+    // 1. Nạp tức thì từ config.js + localStorage (có tôn trọng danh sách đã xóa)
+    let deletedMap = {};
+    try {
+      const rawDel = JSON.parse(localStorage.getItem('studio_admin_deleted_albums'));
+      if (rawDel && typeof rawDel === 'object') deletedMap = rawDel;
+    } catch {}
+
     let localList = [];
     try {
       localList = JSON.parse(localStorage.getItem('studio_admin_history')) || [];
     } catch {
       localList = [];
     }
-    const defaultList = STUDIO_CONFIG.defaultAlbums || [];
-    this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList]);
+    const defaultList = (STUDIO_CONFIG.defaultAlbums || []).map((a) => ({ ...a, updatedAt: 1 }));
+    this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList], deletedMap);
     this.renderPortalAlbums();
 
     // 2. Kéo danh sách đầy đủ mới nhất từ Đám mây (Google Apps Script)
@@ -502,8 +516,29 @@ class AppController {
       const resp = await fetch(`${webhookUrl}?action=get_admin_history&_t=${Date.now()}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      if (data && data.status === 'success' && Array.isArray(data.history) && data.history.length > 0) {
-        this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList, data.history]);
+      if (data && data.status === 'success' && Array.isArray(data.history)) {
+        const cloudActive = [];
+        let deletedUpdated = false;
+        for (const entry of data.history) {
+          if (!entry) continue;
+          if (entry.__deleted) {
+            const k = (entry.key || entry.folderId || entry.slug || '').toString().toLowerCase().trim();
+            const ts = entry.updatedAt || Date.now();
+            if (k && (!deletedMap[k] || ts > deletedMap[k])) {
+              deletedMap[k] = ts;
+              deletedUpdated = true;
+            }
+          } else {
+            cloudActive.push(entry);
+          }
+        }
+        if (deletedUpdated) {
+          try {
+            localStorage.setItem('studio_admin_deleted_albums', JSON.stringify(deletedMap));
+          } catch {}
+        }
+
+        this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList, cloudActive], deletedMap);
         try {
           localStorage.setItem('studio_admin_history', JSON.stringify(this.portalAlbums.slice(0, 50)));
         } catch {}

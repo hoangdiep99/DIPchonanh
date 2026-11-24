@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.7">
+  <link rel="stylesheet" href="css/styles.css?v=10.8">
 </head>
 <body>
 
@@ -911,9 +911,10 @@
 
         <div class="panel-card">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <h3 style="margin:0;">Quản lý Link Đã Tạo (<span id="admin-history-count" class="tabular-nums">0</span>)</h3>
-              <button type="button" id="admin-history-sync-cloud-btn" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;" title="Tải danh sách link mới nhất tạo từ máy tính hoặc thiết bị khác">☁️ Đồng bộ Cloud</button>
+              <button type="button" id="admin-history-save-cloud-btn" class="btn btn-primary btn-sm" style="font-size:11px;padding:3px 9px;" title="Lưu và đồng bộ danh sách link hiện tại (bao gồm các link vừa xóa) lên Đám mây">💾 Lưu đồng bộ</button>
+              <button type="button" id="admin-history-sync-cloud-btn" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px;" title="Tải danh sách link mới nhất từ thiết bị khác">☁️ Tải từ Cloud</button>
             </div>
             <input type="text" id="admin-history-search" class="form-input" style="width:160px;padding:5px 10px;font-size:12px;" placeholder="Tìm theo tên khách...">
           </div>
@@ -1069,9 +1070,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.7" defer></script>
+  <script src="js/pwa.js?v=10.8" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.7"></script>
+  <script type="module" src="js/app.js?v=10.8"></script>
 </body>
 </html>

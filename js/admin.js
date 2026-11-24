@@ -10,6 +10,7 @@ import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.1';
 import { FaceFilterEngine } from './face-filter.js?v=10.1';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
+const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
 const ADMIN_REMEMBER_KEY = 'studio_admin_remember';
 const ADMIN_CUSTOM_PASS_KEY = 'studio_admin_pass';
 
@@ -39,10 +40,41 @@ export class AdminManager {
     this.checkAuthState();
   }
 
+  loadDeletedMap() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(ADMIN_DELETED_KEY));
+      return raw && typeof raw === 'object' ? raw : {};
+    } catch {
+      return {};
+    }
+  }
+
+  saveDeletedMap(map) {
+    try {
+      localStorage.setItem(ADMIN_DELETED_KEY, JSON.stringify(map || {}));
+    } catch {
+      // ignore
+    }
+  }
+
+  isDeletedItem(item, deletedMap) {
+    if (!item || !deletedMap) return false;
+    const itemTs = item.updatedAt || 0;
+    const keys = [item.folderId, item.slug].filter(Boolean).map((k) => k.toString().toLowerCase().trim());
+    for (const k of keys) {
+      if (deletedMap[k] && deletedMap[k] >= itemTs) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   loadHistory() {
+    const deletedMap = this.loadDeletedMap();
     let saved = [];
     try {
-      saved = JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY)) || [];
+      const raw = JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY)) || [];
+      saved = raw.filter((item) => item && !item.__deleted && !this.isDeletedItem(item, deletedMap));
     } catch {
       saved = [];
     }
@@ -62,12 +94,14 @@ export class AdminManager {
     const baseOrigin = window.location.origin + window.location.pathname;
     let hasNew = false;
     for (const def of defaultAlbums) {
+      const defWithTs = { ...def, updatedAt: 1 };
+      if (this.isDeletedItem(defWithTs, deletedMap)) continue;
       if (!saved.some((item) => item.folderId === def.folderId || (def.slug && item.slug === def.slug))) {
         saved.push({
           ...def,
           shortUrl: `${baseOrigin}?k=${encodeURIComponent(def.slug)}&f=${encodeURIComponent(def.folderId)}`,
           link: `${baseOrigin}?k=${encodeURIComponent(def.slug)}&f=${encodeURIComponent(def.folderId)}`,
-          updatedAt: Date.now(),
+          updatedAt: 1,
         });
         hasNew = true;
       }
@@ -79,19 +113,22 @@ export class AdminManager {
     const curSlug = params.get('k') || params.get('album');
     const curClient = params.get('khach') || curSlug || 'doi cuoi tu son 21';
     if (curFolder && !saved.some((item) => item.folderId === curFolder || (curSlug && item.slug === curSlug))) {
-      saved.push({
-        folderId: curFolder,
-        client: curClient.replace(/[-_]+/g, ' '),
-        pkg: params.get('goi') || 'Album Tiêu Chuẩn',
-        slug: curSlug || toSlug(curClient),
-        limit: parseInt(params.get('limit'), 10) || 0,
-        download: params.get('download') !== '0' ? 1 : 0,
-        shortUrl: `${baseOrigin}?k=${encodeURIComponent(curSlug || toSlug(curClient))}&f=${encodeURIComponent(curFolder)}`,
-        link: `${baseOrigin}?k=${encodeURIComponent(curSlug || toSlug(curClient))}&f=${encodeURIComponent(curFolder)}`,
-        updatedAt: Date.now(),
-        time: 'Album hiện tại',
-      });
-      hasNew = true;
+      const candidate = { folderId: curFolder, slug: curSlug || toSlug(curClient), updatedAt: 1 };
+      if (!this.isDeletedItem(candidate, deletedMap)) {
+        saved.push({
+          folderId: curFolder,
+          client: curClient.replace(/[-_]+/g, ' '),
+          pkg: params.get('goi') || 'Album Tiêu Chuẩn',
+          slug: curSlug || toSlug(curClient),
+          limit: parseInt(params.get('limit'), 10) || 0,
+          download: params.get('download') !== '0' ? 1 : 0,
+          shortUrl: `${baseOrigin}?k=${encodeURIComponent(curSlug || toSlug(curClient))}&f=${encodeURIComponent(curFolder)}`,
+          link: `${baseOrigin}?k=${encodeURIComponent(curSlug || toSlug(curClient))}&f=${encodeURIComponent(curFolder)}`,
+          updatedAt: Date.now(),
+          time: 'Album hiện tại',
+        });
+        hasNew = true;
+      }
     }
 
     if (hasNew) {
@@ -105,9 +142,29 @@ export class AdminManager {
     return saved;
   }
 
-  async syncAdminHistoryToCloud() {
+  async syncAdminHistoryToCloud(showFeedback = false) {
     const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
-    if (!webhookUrl || !Array.isArray(this.history) || this.history.length === 0) return;
+    if (!webhookUrl) {
+      if (showFeedback) alert('Chưa cấu hình Google Apps Script Webhook trong config.js!');
+      return;
+    }
+
+    if (showFeedback && this.btnSaveCloud) {
+      this.btnSaveCloud.disabled = true;
+      this.btnSaveCloud.textContent = '⏳ Đang lưu...';
+    }
+
+    const deletedMap = this.loadDeletedMap();
+    const tombstones = Object.entries(deletedMap).map(([key, ts]) => ({
+      __deleted: true,
+      key,
+      folderId: key,
+      slug: key,
+      updatedAt: ts,
+    }));
+
+    const payloadList = [...(Array.isArray(this.history) ? this.history : []), ...tombstones];
+
     try {
       await fetch(webhookUrl, {
         method: 'POST',
@@ -115,11 +172,29 @@ export class AdminManager {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_admin_history',
-          history: this.history,
+          history: payloadList,
         }),
       });
+      if (showFeedback && this.btnSaveCloud) {
+        this.btnSaveCloud.textContent = '✅ Đã lưu Cloud';
+        setTimeout(() => {
+          if (this.btnSaveCloud) {
+            this.btnSaveCloud.textContent = '💾 Lưu đồng bộ';
+            this.btnSaveCloud.disabled = false;
+          }
+        }, 2000);
+      }
     } catch (e) {
       console.warn('Lỗi đồng bộ lịch sử admin lên Cloud:', e);
+      if (showFeedback && this.btnSaveCloud) {
+        this.btnSaveCloud.textContent = '⚠️ Lỗi lưu';
+        setTimeout(() => {
+          if (this.btnSaveCloud) {
+            this.btnSaveCloud.textContent = '💾 Lưu đồng bộ';
+            this.btnSaveCloud.disabled = false;
+          }
+        }, 2000);
+      }
     }
   }
 
@@ -140,17 +215,44 @@ export class AdminManager {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data && data.status === 'success' && Array.isArray(data.history)) {
-        let changed = false;
-        const cloudList = data.history;
+        const deletedMap = this.loadDeletedMap();
+        let deletedChanged = false;
+        const cloudActive = [];
 
-        // Gộp dữ liệu từ cloud vào local
+        for (const entry of data.history) {
+          if (!entry) continue;
+          if (entry.__deleted) {
+            const k = (entry.key || entry.folderId || entry.slug || '').toString().toLowerCase().trim();
+            const ts = entry.updatedAt || Date.now();
+            if (k && (!deletedMap[k] || ts > deletedMap[k])) {
+              deletedMap[k] = ts;
+              deletedChanged = true;
+            }
+          } else {
+            cloudActive.push(entry);
+          }
+        }
+
+        if (deletedChanged) {
+          this.saveDeletedMap(deletedMap);
+        }
+
+        let changed = deletedChanged;
         const map = new Map();
+
+        // Nạp local nhưng loại bỏ các mục đã bị xóa trên Cloud
         for (const item of this.history) {
+          if (this.isDeletedItem(item, deletedMap)) {
+            changed = true;
+            continue;
+          }
           const key = item.folderId || item.slug;
           if (key) map.set(key, item);
         }
 
-        for (const cItem of cloudList) {
+        // Gộp các mục từ Cloud nếu chưa bị xóa ở máy này
+        for (const cItem of cloudActive) {
+          if (this.isDeletedItem(cItem, deletedMap)) continue;
           const key = cItem.folderId || cItem.slug;
           if (!key) continue;
           if (!map.has(key)) {
@@ -165,17 +267,19 @@ export class AdminManager {
           }
         }
 
-        if (changed || this.history.length !== map.size) {
-          this.history = Array.from(map.values()).slice(0, 50);
+        const nextHistory = Array.from(map.values()).slice(0, 50);
+        if (changed || this.history.length !== nextHistory.length) {
+          this.history = nextHistory;
           try {
             localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(this.history));
           } catch {}
           this.renderHistory();
         }
 
-        // Nếu máy tính hiện tại có nhiều album hơn đám mây, tự động đẩy lên để điện thoại thấy được
-        if (map.size > cloudList.length) {
-          this.syncAdminHistoryToCloud();
+        // Nếu máy này có dữ liệu mới hơn hoặc có lệnh xóa mới chưa đẩy lên Cloud -> đẩy đồng bộ lên Cloud
+        const cloudTombstoneCount = data.history.filter((e) => e && e.__deleted).length;
+        if (map.size > cloudActive.length || Object.keys(deletedMap).length > cloudTombstoneCount) {
+          this.syncAdminHistoryToCloud(false);
         }
 
         if (showToast && this.btnSyncCloud) {
@@ -188,8 +292,8 @@ export class AdminManager {
           }, 2000);
         }
       } else {
-        if (this.history.length > 0) {
-          this.syncAdminHistoryToCloud();
+        if (this.history.length > 0 || Object.keys(this.loadDeletedMap()).length > 0) {
+          this.syncAdminHistoryToCloud(false);
         }
         if (showToast && this.btnSyncCloud) {
           this.btnSyncCloud.textContent = '☁️ Đồng bộ Cloud';
@@ -199,7 +303,7 @@ export class AdminManager {
     } catch (err) {
       console.warn('Lỗi khi tải lịch sử admin từ Cloud:', err);
       if (this.history.length > 0) {
-        this.syncAdminHistoryToCloud();
+        this.syncAdminHistoryToCloud(false);
       }
       if (showToast && this.btnSyncCloud) {
         this.btnSyncCloud.textContent = '⚠️ Lỗi đồng bộ';
@@ -214,6 +318,19 @@ export class AdminManager {
   }
 
   saveHistory(item) {
+    item.updatedAt = Date.now();
+    // Gỡ trạng thái đã xóa nếu tạo lại album cùng folderId hoặc slug
+    const deletedMap = this.loadDeletedMap();
+    const keys = [item.folderId, item.slug].filter(Boolean).map((k) => k.toString().toLowerCase().trim());
+    let unDeleted = false;
+    for (const k of keys) {
+      if (deletedMap[k]) {
+        delete deletedMap[k];
+        unDeleted = true;
+      }
+    }
+    if (unDeleted) this.saveDeletedMap(deletedMap);
+
     if (this.editingIndex >= 0 && this.editingIndex < this.history.length) {
       // Chế độ chỉnh sửa
       this.history[this.editingIndex] = item;
@@ -229,18 +346,28 @@ export class AdminManager {
       // ignore
     }
     this.renderHistory();
-    this.syncAdminHistoryToCloud();
+    this.syncAdminHistoryToCloud(true);
   }
 
   deleteHistoryItem(index) {
+    const removed = this.history[index];
     this.history.splice(index, 1);
+
+    if (removed) {
+      const deletedMap = this.loadDeletedMap();
+      const now = Date.now();
+      if (removed.folderId) deletedMap[removed.folderId.toString().toLowerCase().trim()] = now;
+      if (removed.slug) deletedMap[removed.slug.toString().toLowerCase().trim()] = now;
+      this.saveDeletedMap(deletedMap);
+    }
+
     try {
       localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(this.history));
     } catch {
       // ignore
     }
     this.renderHistory();
-    this.syncAdminHistoryToCloud();
+    this.syncAdminHistoryToCloud(true);
   }
 
   // --- ĐĂNG NHẬP CÁ NHÂN TIỆN LỢI (1-CHẠM & GHI NHỚ VĨNH VIỄN) ---
@@ -384,9 +511,14 @@ export class AdminManager {
     this.historyCountEl = this.container.querySelector('#admin-history-count');
     this.historySearchInput = this.container.querySelector('#admin-history-search');
     this.btnSyncCloud = this.container.querySelector('#admin-history-sync-cloud-btn');
+    this.btnSaveCloud = this.container.querySelector('#admin-history-save-cloud-btn');
 
     this.btnSyncCloud?.addEventListener('click', () => {
       this.syncAdminHistoryFromCloud(true);
+    });
+
+    this.btnSaveCloud?.addEventListener('click', () => {
+      this.syncAdminHistoryToCloud(true);
     });
 
     this.historySearchInput?.addEventListener('input', () => {
