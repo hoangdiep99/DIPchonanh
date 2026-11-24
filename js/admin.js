@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.10';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.10';
-import { FaceFilterEngine } from './face-filter.js?v=10.10';
+import { STUDIO_CONFIG } from '../config.js?v=10.11';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.11';
+import { FaceFilterEngine } from './face-filter.js?v=10.11';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -214,79 +214,33 @@ export class AdminManager {
       const resp = await fetch(`${webhookUrl}?action=get_admin_history&_t=${Date.now()}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      if (data && data.status === 'success' && Array.isArray(data.history)) {
-        const deletedMap = this.loadDeletedMap();
-        let deletedChanged = false;
+      if (data && data.status === 'success' && Array.isArray(data.history) && data.history.length > 0) {
+        const cloudDeletedMap = {};
         const cloudActive = [];
 
         for (const entry of data.history) {
           if (!entry) continue;
           if (entry.__deleted) {
             const k = (entry.key || entry.folderId || entry.slug || '').toString().toLowerCase().trim();
-            const ts = entry.updatedAt || Date.now();
-            if (k && (!deletedMap[k] || ts > deletedMap[k])) {
-              deletedMap[k] = ts;
-              deletedChanged = true;
-            }
-          } else {
+            if (k) cloudDeletedMap[k] = entry.updatedAt || Date.now();
+          } else if (entry.folderId || entry.slug) {
             cloudActive.push(entry);
           }
         }
 
-        if (deletedChanged) {
-          this.saveDeletedMap(deletedMap);
-        }
-
-        let changed = deletedChanged;
-        const map = new Map();
-
-        // Nạp local nhưng loại bỏ các mục đã bị xóa trên Cloud
-        for (const item of this.history) {
-          if (this.isDeletedItem(item, deletedMap)) {
-            changed = true;
-            continue;
-          }
-          const key = item.folderId || item.slug;
-          if (key) map.set(key, item);
-        }
-
-        // Gộp các mục từ Cloud nếu chưa bị xóa ở máy này
-        for (const cItem of cloudActive) {
-          if (this.isDeletedItem(cItem, deletedMap)) continue;
-          const key = cItem.folderId || cItem.slug;
-          if (!key) continue;
-          if (!map.has(key)) {
-            map.set(key, cItem);
-            changed = true;
-          } else {
-            const localItem = map.get(key);
-            if ((cItem.updatedAt || 0) > (localItem.updatedAt || 0)) {
-              map.set(key, { ...localItem, ...cItem });
-              changed = true;
-            }
-          }
-        }
-
-        const nextHistory = Array.from(map.values()).slice(0, 50);
-        if (changed || this.history.length !== nextHistory.length) {
-          this.history = nextHistory;
-          try {
-            localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(this.history));
-          } catch {}
-          this.renderHistory();
-        }
-
-        // Nếu máy này có dữ liệu mới hơn hoặc có lệnh xóa mới chưa đẩy lên Cloud -> đẩy đồng bộ lên Cloud
-        const cloudTombstoneCount = data.history.filter((e) => e && e.__deleted).length;
-        if (map.size > cloudActive.length || Object.keys(deletedMap).length > cloudTombstoneCount) {
-          this.syncAdminHistoryToCloud(false);
-        }
+        // Đám mây là nguồn chuẩn duy nhất: đồng bộ chính xác danh sách (kể cả các mục đã xóa từ thiết bị khác)
+        this.history = cloudActive.slice(0, 50);
+        this.saveDeletedMap(cloudDeletedMap);
+        try {
+          localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(this.history));
+        } catch {}
+        this.renderHistory();
 
         if (showToast && this.btnSyncCloud) {
           this.btnSyncCloud.textContent = '✅ Đã đồng bộ';
           setTimeout(() => {
             if (this.btnSyncCloud) {
-              this.btnSyncCloud.textContent = '☁️ Đồng bộ Cloud';
+              this.btnSyncCloud.textContent = '☁️ Tải từ Cloud';
               this.btnSyncCloud.disabled = false;
             }
           }, 2000);
@@ -296,7 +250,7 @@ export class AdminManager {
           this.syncAdminHistoryToCloud(false);
         }
         if (showToast && this.btnSyncCloud) {
-          this.btnSyncCloud.textContent = '☁️ Đồng bộ Cloud';
+          this.btnSyncCloud.textContent = '☁️ Tải từ Cloud';
           this.btnSyncCloud.disabled = false;
         }
       }

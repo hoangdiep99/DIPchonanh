@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.10';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.10';
-import { GalleryGrid } from './gallery.js?v=10.10';
-import { LightboxModal } from './lightbox.js?v=10.10';
-import { StorageManager } from './storage.js?v=10.10';
-import { FaceFilterEngine } from './face-filter.js?v=10.10';
-import { ExportService } from './export.js?v=10.10';
-import { AdminManager } from './admin.js?v=10.10';
+import { STUDIO_CONFIG } from '../config.js?v=10.11';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.11';
+import { GalleryGrid } from './gallery.js?v=10.11';
+import { LightboxModal } from './lightbox.js?v=10.11';
+import { StorageManager } from './storage.js?v=10.11';
+import { FaceFilterEngine } from './face-filter.js?v=10.11';
+import { ExportService } from './export.js?v=10.11';
+import { AdminManager } from './admin.js?v=10.11';
 
 class AppController {
   constructor() {
@@ -516,31 +516,24 @@ class AppController {
       const resp = await fetch(`${webhookUrl}?action=get_admin_history&_t=${Date.now()}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      if (data && data.status === 'success' && Array.isArray(data.history)) {
+      if (data && data.status === 'success' && Array.isArray(data.history) && data.history.length > 0) {
         const cloudActive = [];
-        let deletedUpdated = false;
+        const cloudDeletedMap = {};
         for (const entry of data.history) {
           if (!entry) continue;
           if (entry.__deleted) {
             const k = (entry.key || entry.folderId || entry.slug || '').toString().toLowerCase().trim();
-            const ts = entry.updatedAt || Date.now();
-            if (k && (!deletedMap[k] || ts > deletedMap[k])) {
-              deletedMap[k] = ts;
-              deletedUpdated = true;
-            }
-          } else {
+            if (k) cloudDeletedMap[k] = entry.updatedAt || Date.now();
+          } else if (entry.folderId || entry.slug) {
             cloudActive.push(entry);
           }
         }
-        if (deletedUpdated) {
-          try {
-            localStorage.setItem('studio_admin_deleted_albums', JSON.stringify(deletedMap));
-          } catch {}
-        }
 
-        this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList, cloudActive], deletedMap);
+        // Đám mây là nguồn chuẩn duy nhất (Single Source of Truth): ghi đè sạch local cũ để các link đã xóa biến mất 100%
+        this.portalAlbums = cloudActive.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
         try {
           localStorage.setItem('studio_admin_history', JSON.stringify(this.portalAlbums.slice(0, 50)));
+          localStorage.setItem('studio_admin_deleted_albums', JSON.stringify(cloudDeletedMap));
         } catch {}
         this.renderPortalAlbums();
         if (this.portalSyncBadge) {
