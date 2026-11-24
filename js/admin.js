@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.11';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.11';
-import { FaceFilterEngine } from './face-filter.js?v=10.11';
+import { STUDIO_CONFIG } from '../config.js?v=10.12';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.12';
+import { FaceFilterEngine } from './face-filter.js?v=10.12';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -448,8 +448,46 @@ export class AdminManager {
     this.packageInput = this.container.querySelector('#admin-package-name');
     this.shortSlugInput = this.container.querySelector('#admin-short-slug');
     this.limitInput = this.container.querySelector('#admin-limit');
+    this.shootDateInput = this.container.querySelector('#admin-shoot-date');
     this.downloadToggle = this.container.querySelector('#admin-download-toggle');
+    this.publicToggle = this.container.querySelector('#admin-public-toggle');
     this.presetChipsEl = this.container.querySelector('#admin-preset-chips');
+
+    // Đặt ngày mặc định cho ô Ngày chụp
+    if (this.shootDateInput && !this.shootDateInput.value) {
+      this.shootDateInput.value = new Date().toLocaleDateString('vi-VN');
+    }
+
+    // Thống kê tổng quan Admin Stats Bar
+    this.statAlbumsEl = this.container.querySelector('#admin-stat-albums');
+    this.statPublicEl = this.container.querySelector('#admin-stat-public');
+    this.statSelectedEl = this.container.querySelector('#admin-stat-selected');
+    this.statCloudEl = this.container.querySelector('#admin-stat-cloud');
+
+    // Modal Chọn Ảnh Bìa Album
+    this.coverModal = this.container.querySelector('#admin-cover-modal');
+    this.coverBackdrop = this.container.querySelector('#admin-cover-backdrop');
+    this.coverCloseBtn = this.container.querySelector('#admin-cover-close');
+    this.coverModalTitle = this.container.querySelector('#admin-cover-modal-title');
+    this.coverSearchInput = this.container.querySelector('#admin-cover-search');
+    this.coverCountEl = this.container.querySelector('#admin-cover-count');
+    this.coverStatusEl = this.container.querySelector('#admin-cover-status');
+    this.coverStatusText = this.container.querySelector('#admin-cover-status-text');
+    this.coverGridEl = this.container.querySelector('#admin-cover-grid');
+    this.coverMoreWrap = this.container.querySelector('#admin-cover-more-wrap');
+    this.coverLoadMoreBtn = this.container.querySelector('#admin-cover-load-more');
+
+    const closeCoverModal = () => this.coverModal?.classList.add('hidden');
+    this.coverCloseBtn?.addEventListener('click', closeCoverModal);
+    this.coverBackdrop?.addEventListener('click', closeCoverModal);
+    this.coverSearchInput?.addEventListener('input', () => {
+      this.coverPickerLimit = 60;
+      this.renderCoverPickerGrid();
+    });
+    this.coverLoadMoreBtn?.addEventListener('click', () => {
+      this.coverPickerLimit = (this.coverPickerLimit || 60) + 60;
+      this.renderCoverPickerGrid();
+    });
 
     this.btnGenerate = this.container.querySelector('#admin-btn-generate');
     this.resultWrap = this.container.querySelector('#admin-result-wrap');
@@ -644,7 +682,9 @@ export class AdminManager {
     this.packageInput.value = item.pkg;
     this.shortSlugInput.value = item.slug || toSlug(item.client);
     this.limitInput.value = item.limit || '';
+    if (this.shootDateInput) this.shootDateInput.value = item.time || new Date().toLocaleDateString('vi-VN');
     this.downloadToggle.checked = item.download === 1;
+    if (this.publicToggle) this.publicToggle.checked = item.isPublic !== false;
 
     this.handleDriveInput();
 
@@ -667,7 +707,9 @@ export class AdminManager {
     this.packageInput.value = '';
     this.shortSlugInput.value = '';
     this.limitInput.value = '';
+    if (this.shootDateInput) this.shootDateInput.value = new Date().toLocaleDateString('vi-VN');
     this.downloadToggle.checked = true;
+    if (this.publicToggle) this.publicToggle.checked = true;
     this.handleDriveInput();
     this.resultWrap.classList.add('hidden');
   }
@@ -725,17 +767,31 @@ export class AdminManager {
     if (this.resultMsg) this.resultMsg.value = msgTemplate;
     this.resultWrap.classList.remove('hidden');
 
+    const existingItem =
+      (this.editingIndex >= 0 && this.history[this.editingIndex]) ||
+      this.history.find((h) => h.folderId === folderId) ||
+      null;
+    const shootDate = (this.shootDateInput?.value || '').trim() || new Date().toLocaleDateString('vi-VN');
+    const isPublic = this.publicToggle ? this.publicToggle.checked : true;
+
     const historyItem = {
+      ...(existingItem ? {
+        coverUrl: existingItem.coverUrl,
+        coverFallbackUrl: existingItem.coverFallbackUrl,
+        coverPhotoId: existingItem.coverPhotoId,
+        photoCount: existingItem.photoCount,
+      } : {}),
       folderId,
       client,
       pkg,
       slug,
       limit,
       download,
+      isPublic,
       shortUrl,
       link: fullUrl,
       updatedAt: Date.now(),
-      time: new Date().toLocaleDateString('vi-VN'),
+      time: shootDate,
     };
 
     const isEdit = this.editingIndex >= 0;
@@ -1054,22 +1110,44 @@ export class AdminManager {
         div.style.background = 'rgba(245, 158, 11, 0.06)';
       }
 
+      // Đọc ảnh bìa hiện tại của album (từ item hoặc cache localStorage)
+      let thumbUrl = item.coverUrl || '';
+      if (!thumbUrl && item.folderId) {
+        try {
+          const cRaw = localStorage.getItem(`studio_album_cover_${item.folderId}`);
+          if (cRaw) thumbUrl = JSON.parse(cRaw).coverUrl || '';
+        } catch {}
+      }
+
+      const privacyBadge =
+        item.isPublic === false
+          ? `<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#fef3c7;color:#b45309;font-weight:600;">🔒 Ẩn Trang chủ</span>`
+          : '';
+
       div.innerHTML = `
-        <div class="history-item-header">
+        <div class="history-item-header" style="display:flex;align-items:flex-start;gap:12px;">
+          <div class="history-item-thumb-wrap" data-action="pick-cover" title="Bấm để chọn ảnh bìa đẹp nhất cho album này">
+            ${thumbUrl ? `<img src="${thumbUrl}" class="history-item-thumb" alt="${item.client}" loading="lazy">` : `<span style="font-size:22px;opacity:0.5;">📸</span>`}
+            <span class="history-item-thumb-overlay">Đổi bìa</span>
+          </div>
           <div style="min-width:0;flex:1;">
             <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
               <strong style="color:var(--ink-primary);font-size:13.5px;">${item.client}</strong>
               <span style="font-size:11px;color:var(--ink-secondary);padding:1px 6px;background:var(--border-hairline);border-radius:4px;">${item.pkg}</span>
+              ${privacyBadge}
               ${selCountText}
               ${aiStatusHtml}
             </div>
-            <div style="font-size:11px;color:var(--ink-muted);margin-top:3px;font-family:monospace;">
-              ${slugDisplay ? `<span style="color:var(--accent-success);font-weight:600;">${slugDisplay}</span> • ` : ''}ID: ${item.folderId.substring(0, 16)}... • ${item.time}
+            <div style="font-size:11px;color:var(--ink-muted);margin-top:4px;font-family:monospace;">
+              ${slugDisplay ? `<span style="color:var(--accent-success);font-weight:600;">${slugDisplay}</span> • ` : ''}ID: ${item.folderId.substring(0, 14)}... • 📅 ${item.time}
             </div>
           </div>
         </div>
 
         <div class="history-item-actions">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="pick-cover" title="Chọn 1 ảnh đẹp nhất trong album làm ảnh đại diện">
+            🖼️ Ảnh bìa
+          </button>
           <button type="button" class="btn btn-secondary btn-sm" data-action="edit" title="Chỉnh sửa thông tin link này" style="font-weight:600;">
             ✏️ Sửa
           </button>
@@ -1087,6 +1165,13 @@ export class AdminManager {
           </button>
         </div>
       `;
+
+      // Nút Chọn ảnh bìa (cả trên thumbnail lẫn nút bấm)
+      div.querySelectorAll('[data-action="pick-cover"]').forEach((el) => {
+        el.addEventListener('click', () => {
+          this.openCoverPicker(realIndex);
+        });
+      });
 
       // Nút Chỉnh sửa
       div.querySelector('[data-action="edit"]').addEventListener('click', () => {
@@ -1141,5 +1226,141 @@ export class AdminManager {
 
       this.historyListEl.appendChild(div);
     });
+
+    this.updateAdminStats();
+  }
+
+  updateAdminStats() {
+    const total = this.history.length;
+    const publicCount = this.history.filter((h) => h.isPublic !== false).length;
+    let totalSelected = 0;
+    for (const item of this.history) {
+      try {
+        const draft = JSON.parse(localStorage.getItem(`studio_select_${item.folderId}`)) || {};
+        totalSelected += Object.keys(draft).filter((k) => draft[k].selected).length;
+      } catch {}
+    }
+
+    if (this.statAlbumsEl) this.statAlbumsEl.textContent = total;
+    if (this.statPublicEl) this.statPublicEl.textContent = publicCount;
+    if (this.statSelectedEl) this.statSelectedEl.textContent = totalSelected;
+  }
+
+  // --- BỘ CHỌN ẢNH BÌA ĐẸP NHẤT CHO TỪNG ALBUM ---
+  async openCoverPicker(index) {
+    const item = this.history[index];
+    if (!item || !item.folderId || !this.coverModal) return;
+
+    this.coverPickerIndex = index;
+    this.coverPickerItem = item;
+    this.coverPickerPhotos = [];
+    this.coverPickerLimit = 60;
+
+    if (this.coverModalTitle) {
+      this.coverModalTitle.textContent = `🖼️ Chọn Ảnh Bìa — ${item.client}`;
+    }
+    if (this.coverSearchInput) this.coverSearchInput.value = '';
+    if (this.coverGridEl) this.coverGridEl.innerHTML = '';
+    if (this.coverMoreWrap) this.coverMoreWrap.classList.add('hidden');
+    if (this.coverCountEl) this.coverCountEl.textContent = 'Đang tải...';
+    if (this.coverStatusEl) this.coverStatusEl.classList.remove('hidden');
+    if (this.coverStatusText) this.coverStatusText.textContent = 'Đang kết nối Google Drive tải danh sách ảnh...';
+
+    this.coverModal.classList.remove('hidden');
+
+    try {
+      const data = await loadDriveAlbum(item.folderId, STUDIO_CONFIG.googleDriveApiKey, null, false);
+      this.coverPickerPhotos = data?.photos || [];
+      this.coverStatusEl?.classList.add('hidden');
+      if (this.coverPickerPhotos.length === 0) {
+        if (this.coverGridEl) {
+          this.coverGridEl.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--ink-muted);padding:24px;">Không tìm thấy ảnh nào trong thư mục Google Drive này.</p>';
+        }
+        return;
+      }
+      this.renderCoverPickerGrid();
+    } catch (err) {
+      console.error('Lỗi tải ảnh chọn bìa:', err);
+      if (this.coverStatusText) {
+        this.coverStatusText.textContent = 'Không thể tải danh sách ảnh từ Google Drive. Vui lòng thử lại!';
+      }
+    }
+  }
+
+  renderCoverPickerGrid() {
+    if (!this.coverGridEl) return;
+    const q = (this.coverSearchInput?.value || '').trim().toLowerCase();
+    const filtered = q
+      ? this.coverPickerPhotos.filter((p) => (p.name || '').toLowerCase().includes(q))
+      : this.coverPickerPhotos;
+
+    if (this.coverCountEl) {
+      this.coverCountEl.textContent = `${filtered.length} ảnh`;
+    }
+
+    const limit = this.coverPickerLimit || 60;
+    const slice = filtered.slice(0, limit);
+    const currentCoverId = this.coverPickerItem?.coverPhotoId || '';
+    const currentCoverUrl = this.coverPickerItem?.coverUrl || '';
+
+    this.coverGridEl.innerHTML = '';
+    for (const photo of slice) {
+      const thumbUrl = photo.gridUrl || photo.thumbnailLink || `https://drive.google.com/thumbnail?id=${photo.id}&sz=w800`;
+      const fallbackUrl = `https://lh3.googleusercontent.com/d/${photo.id}=w800`;
+      const isCurrent = (currentCoverId && currentCoverId === photo.id) || (currentCoverUrl && currentCoverUrl === thumbUrl);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `admin-cover-option${isCurrent ? ' is-current' : ''}`;
+      btn.innerHTML = `
+        <img src="${thumbUrl}" alt="${photo.name}" loading="lazy" decoding="async">
+        ${isCurrent ? '<span class="admin-cover-option-badge">✓ Ảnh bìa</span>' : ''}
+        <span class="admin-cover-option-name">${photo.name}</span>
+      `;
+
+      const imgEl = btn.querySelector('img');
+      imgEl.onerror = () => {
+        if (imgEl.src !== fallbackUrl) imgEl.src = fallbackUrl;
+      };
+
+      btn.addEventListener('click', () => {
+        this.selectCoverPhoto(photo, thumbUrl, fallbackUrl);
+      });
+
+      this.coverGridEl.appendChild(btn);
+    }
+
+    if (this.coverMoreWrap) {
+      this.coverMoreWrap.classList.toggle('hidden', filtered.length <= limit);
+    }
+  }
+
+  selectCoverPhoto(photo, thumbUrl, fallbackUrl) {
+    const idx = this.coverPickerIndex;
+    const item = this.history[idx];
+    if (!item) return;
+
+    item.coverUrl = thumbUrl;
+    item.coverFallbackUrl = fallbackUrl;
+    item.coverPhotoId = photo.id;
+    item.photoCount = this.coverPickerPhotos.length || item.photoCount || 0;
+    item.updatedAt = Date.now();
+
+    try {
+      localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(this.history));
+      localStorage.setItem(
+        `studio_album_cover_${item.folderId}`,
+        JSON.stringify({
+          coverUrl: thumbUrl,
+          fallbackUrl: fallbackUrl,
+          photoCount: item.photoCount,
+          updatedAt: Date.now(),
+        })
+      );
+    } catch {}
+
+    this.coverModal?.classList.add('hidden');
+    this.renderHistory();
+    this.syncAdminHistoryToCloud(true);
   }
 }

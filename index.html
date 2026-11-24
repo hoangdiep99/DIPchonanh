@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.11">
+  <link rel="stylesheet" href="css/styles.css?v=10.12">
 </head>
 <body>
 
@@ -754,15 +754,48 @@
     <div id="admin-panel-content" class="hidden">
       <div class="admin-header">
         <div>
-          <h2 style="margin:0;font-size:22px;letter-spacing:-0.02em;">Trình Tạo Link & Quản Lý Album</h2>
+          <h2 style="margin:0;font-size:22px;letter-spacing:-0.02em;">Bảng Quản Trị Studio — DIPchonanh</h2>
           <p style="margin:4px 0 0;font-size:13.5px;color:var(--ink-secondary);">
-            Tạo và chỉnh sửa link chọn ảnh gửi khách hàng qua Zalo/Messenger
+            Tạo link chọn ảnh, chọn ảnh bìa album &amp; đồng bộ đám mây đa thiết bị
           </p>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <a href="./" class="btn btn-ghost btn-sm" title="Mở Trang chủ tra cứu album của khách">🏠 Trang chủ</a>
           <button type="button" id="admin-btn-change-pass" class="btn btn-ghost btn-sm" title="Đổi mã PIN / Mật khẩu">🔑 Đổi mật khẩu</button>
           <a href="#" id="admin-btn-back-to-gallery" class="btn btn-secondary btn-sm">← Xem album ảnh</a>
           <button type="button" id="admin-btn-logout" class="btn btn-ghost btn-sm" title="Đăng xuất quản trị">Đăng xuất</button>
+        </div>
+      </div>
+
+      <!-- Thanh Thống Kê Tổng Quan Studio (Admin Stats Bar) -->
+      <div class="admin-stats-bar">
+        <div class="admin-stat-card">
+          <span class="admin-stat-icon">📁</span>
+          <div>
+            <div class="admin-stat-val tabular-nums" id="admin-stat-albums">0</div>
+            <div class="admin-stat-label">Album đang quản lý</div>
+          </div>
+        </div>
+        <div class="admin-stat-card">
+          <span class="admin-stat-icon">🌐</span>
+          <div>
+            <div class="admin-stat-val tabular-nums" id="admin-stat-public">0</div>
+            <div class="admin-stat-label">Hiện trên Trang chủ</div>
+          </div>
+        </div>
+        <div class="admin-stat-card">
+          <span class="admin-stat-icon">❤️</span>
+          <div>
+            <div class="admin-stat-val tabular-nums" id="admin-stat-selected">0</div>
+            <div class="admin-stat-label">Ảnh khách đã chọn</div>
+          </div>
+        </div>
+        <div class="admin-stat-card">
+          <span class="admin-stat-icon">☁️</span>
+          <div>
+            <div class="admin-stat-val" id="admin-stat-cloud" style="font-size:14px;color:#059669;">Đã đồng bộ</div>
+            <div class="admin-stat-label">Trạng thái Đám mây</div>
+          </div>
         </div>
       </div>
 
@@ -813,18 +846,35 @@
           <div id="admin-preset-chips" class="preset-chips"></div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="admin-limit">Số ảnh tiêu chuẩn (limit):</label>
-          <input type="number" id="admin-limit" class="form-input" placeholder="30 (để trống hoặc 0 = không giới hạn)" min="0">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="admin-limit">Số ảnh tiêu chuẩn (limit):</label>
+            <input type="number" id="admin-limit" class="form-input" placeholder="0 = không giới hạn" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="admin-shoot-date">Ngày chụp / Ngày tạo:</label>
+            <input type="text" id="admin-shoot-date" class="form-input" placeholder="VD: 24/11/2026">
+          </div>
         </div>
 
         <div class="switch-row">
           <div>
             <strong style="font-size:13px;display:block;">Cho phép tải ảnh gốc (download):</strong>
-            <span style="font-size:11.5px;color:var(--ink-muted);">Tắt khi chỉ gửi ảnh thô có watermark chọn lọc; Bật khi bàn giao.</span>
+            <span style="font-size:11.5px;color:var(--ink-muted);">Tắt khi chỉ gửi ảnh thô chọn lọc; Bật khi bàn giao.</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="admin-download-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <strong style="font-size:13px;display:block;">Hiển thị công khai trên Trang chủ:</strong>
+            <span style="font-size:11.5px;color:var(--ink-muted);">Tắt để ẩn khỏi Trang chủ (chỉ khách có link mới mở được).</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="admin-public-toggle" checked>
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -922,6 +972,36 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <!-- Modal Chọn Ảnh Bìa Đẹp Nhất Cho Album -->
+    <div id="admin-cover-modal" class="admin-cover-modal hidden" role="dialog" aria-modal="true" aria-labelledby="admin-cover-modal-title">
+      <div id="admin-cover-backdrop" class="admin-cover-backdrop"></div>
+      <div class="admin-cover-dialog">
+        <div class="admin-cover-header">
+          <div>
+            <h3 id="admin-cover-modal-title" style="margin:0;font-size:17px;">🖼️ Chọn Ảnh Bìa Album</h3>
+            <p id="admin-cover-modal-sub" style="margin:3px 0 0;font-size:12.5px;color:var(--ink-secondary);">Chạm vào bức ảnh đẹp nhất để đặt làm ảnh đại diện ngoài Trang chủ</p>
+          </div>
+          <button type="button" id="admin-cover-close" class="pwa-ios-close-btn" aria-label="Đóng">✕</button>
+        </div>
+
+        <div class="admin-cover-toolbar">
+          <input type="text" id="admin-cover-search" class="form-input" style="flex:1;padding:7px 12px;font-size:13px;" placeholder="Tìm nhanh theo tên file ảnh (VD: 0045, DIP_79...)">
+          <span id="admin-cover-count" style="font-size:12px;color:var(--ink-muted);white-space:nowrap;">0 ảnh</span>
+        </div>
+
+        <div id="admin-cover-status" class="admin-cover-status hidden">
+          <div class="spinner" style="width:24px;height:24px;border-width:2.5px;"></div>
+          <span id="admin-cover-status-text">Đang tải danh sách ảnh từ Google Drive...</span>
+        </div>
+
+        <div id="admin-cover-grid" class="admin-cover-grid"></div>
+
+        <div id="admin-cover-more-wrap" class="hidden" style="text-align:center;margin-top:12px;">
+          <button type="button" id="admin-cover-load-more" class="btn btn-secondary btn-sm">Tải thêm ảnh...</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1070,9 +1150,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.11" defer></script>
+  <script src="js/pwa.js?v=10.12" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.11"></script>
+  <script type="module" src="js/app.js?v=10.12"></script>
 </body>
 </html>

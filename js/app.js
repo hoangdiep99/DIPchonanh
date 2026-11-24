@@ -1,14 +1,14 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.11';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.11';
-import { GalleryGrid } from './gallery.js?v=10.11';
-import { LightboxModal } from './lightbox.js?v=10.11';
-import { StorageManager } from './storage.js?v=10.11';
-import { FaceFilterEngine } from './face-filter.js?v=10.11';
-import { ExportService } from './export.js?v=10.11';
-import { AdminManager } from './admin.js?v=10.11';
+import { STUDIO_CONFIG } from '../config.js?v=10.12';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.12';
+import { GalleryGrid } from './gallery.js?v=10.12';
+import { LightboxModal } from './lightbox.js?v=10.12';
+import { StorageManager } from './storage.js?v=10.12';
+import { FaceFilterEngine } from './face-filter.js?v=10.12';
+import { ExportService } from './export.js?v=10.12';
+import { AdminManager } from './admin.js?v=10.12';
 
 class AppController {
   constructor() {
@@ -499,7 +499,9 @@ class AppController {
       localList = [];
     }
     const defaultList = (STUDIO_CONFIG.defaultAlbums || []).map((a) => ({ ...a, updatedAt: 1 }));
-    this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList], deletedMap);
+    this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList], deletedMap).filter(
+      (a) => a.isPublic !== false
+    );
     this.renderPortalAlbums();
 
     // 2. Kéo danh sách đầy đủ mới nhất từ Đám mây (Google Apps Script)
@@ -530,10 +532,26 @@ class AppController {
         }
 
         // Đám mây là nguồn chuẩn duy nhất (Single Source of Truth): ghi đè sạch local cũ để các link đã xóa biến mất 100%
-        this.portalAlbums = cloudActive.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        this.portalAlbums = cloudActive
+          .filter((a) => a.isPublic !== false)
+          .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
         try {
-          localStorage.setItem('studio_admin_history', JSON.stringify(this.portalAlbums.slice(0, 50)));
+          localStorage.setItem('studio_admin_history', JSON.stringify(cloudActive.slice(0, 50)));
           localStorage.setItem('studio_admin_deleted_albums', JSON.stringify(cloudDeletedMap));
+          // Cập nhật ảnh bìa tùy chọn từ Cloud vào cache local ngay lập tức
+          for (const a of cloudActive) {
+            if (a.folderId && a.coverUrl) {
+              localStorage.setItem(
+                `studio_album_cover_${a.folderId}`,
+                JSON.stringify({
+                  coverUrl: a.coverUrl,
+                  fallbackUrl: a.coverFallbackUrl || '',
+                  photoCount: a.photoCount || 0,
+                  updatedAt: a.updatedAt || Date.now(),
+                })
+              );
+            }
+          }
         } catch {}
         this.renderPortalAlbums();
         if (this.portalSyncBadge) {
