@@ -1102,10 +1102,27 @@ a {
   flex-shrink: 0;
 }
 
+/* AI Quality button — gradient purple, same height as other bar buttons */
+.btn-ai-quality {
+  background: linear-gradient(135deg, #7C3AED 0%, #DB2777 100%);
+  color: #fff !important;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  gap: 6px;
+  box-shadow: 0 1px 6px rgba(124,58,237,0.28);
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.btn-ai-quality:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-ai-quality.is-active {
+  box-shadow: 0 0 0 2.5px rgba(124,58,237,0.5), 0 1px 6px rgba(124,58,237,0.28);
+}
+.btn-ai-quality svg { width: 15px; height: 15px; flex-shrink: 0; }
+
 @media (max-width: 859px) {
   .bar-actions {
     display: grid;
-    grid-template-columns: 1fr 1.2fr;
+    grid-template-columns: 1fr 1fr 1.2fr;
     gap: 8px;
   }
 }
