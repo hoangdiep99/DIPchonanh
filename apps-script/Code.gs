@@ -53,12 +53,11 @@ function doGet(e) {
     // 0.1. Phân hệ Đồng Bộ Cụm Khuôn Mặt Đám Mây (?action=get_clusters&slug=...)
     if (action === 'get_clusters') {
       var slugKey = (params.slug || '').toLowerCase().trim();
-      var key = 'clusters_' + (slugKey || folderId);
-      var rawClusters = PropertiesService.getScriptProperties().getProperty(key);
-      if (rawClusters) {
+      var cloudClusters = loadCloudClusters(slugKey, folderId);
+      if (cloudClusters && Array.isArray(cloudClusters) && cloudClusters.length > 0) {
         return jsonResponse({
           status: 'success',
-          clusters: JSON.parse(rawClusters)
+          clusters: cloudClusters
         });
       }
       return jsonResponse({
@@ -197,8 +196,7 @@ function doPost(e) {
       var folderIdCluster = data.folderId || '';
       var clustersList = data.clusters || [];
       if ((slugCluster || folderIdCluster) && Array.isArray(clustersList) && clustersList.length > 0) {
-        var cKey = 'clusters_' + (slugCluster || folderIdCluster);
-        PropertiesService.getScriptProperties().setProperty(cKey, JSON.stringify(clustersList));
+        saveCloudClusters(slugCluster, folderIdCluster, clustersList);
         return jsonResponse({ status: 'success', message: 'Đã lưu cụm khuôn mặt lên đám mây' });
       }
     }
@@ -393,6 +391,60 @@ function loadCloudDraft(folderId) {
   }
 
   return { draft: {}, updatedAt: 0 };
+}
+
+/**
+ * Lưu cụm khuôn mặt vào RAM cache và file trên Google Drive (không giới hạn 9KB)
+ */
+function saveCloudClusters(slug, folderId, clusters) {
+  var key = 'clusters_' + (slug || folderId);
+  var jsonStr = JSON.stringify(clusters);
+  
+  // 1. Lưu vào RAM Cache 6 tiếng để phản hồi tức thì ~0.1s
+  putToCache(key, jsonStr, 21600);
+
+  // 2. Lưu vào file JSON trên Google Drive (vĩnh viễn)
+  try {
+    var fileName = '_studio_faces_' + (slug || folderId) + '.json';
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      var f = files.next();
+      f.setContent(jsonStr);
+    } else {
+      DriveApp.createFile(fileName, jsonStr, MimeType.PLAIN_TEXT);
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+/**
+ * Đọc cụm khuôn mặt từ RAM cache hoặc file trên Google Drive
+ */
+function loadCloudClusters(slug, folderId) {
+  var key = 'clusters_' + (slug || folderId);
+  // 1. Thử lấy từ RAM Cache
+  var cached = getFromCache(key);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {}
+  }
+
+  // 2. Thử lấy từ Google Drive file
+  try {
+    var fileName = '_studio_faces_' + (slug || folderId) + '.json';
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      var content = files.next().getBlob().getDataAsString();
+      if (content) {
+        putToCache(key, content, 21600);
+        return JSON.parse(content);
+      }
+    }
+  } catch (e) {}
+
+  return null;
 }
 
 function saveToSheet(data) {
