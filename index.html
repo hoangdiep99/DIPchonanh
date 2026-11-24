@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.12">
+  <link rel="stylesheet" href="css/styles.css?v=10.13">
 </head>
 <body>
 
@@ -819,15 +819,9 @@
           <span style="font-size:11.5px;color:var(--ink-muted);">Dán link thư mục Google Drive chứa ảnh gốc của khách.</span>
         </div>
 
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label" for="admin-client-name">Tên khách hàng / Mã HĐ:</label>
-            <input type="text" id="admin-client-name" class="form-input" placeholder="VD: Anh Nam & Chị Linh">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="admin-package-name">Tên gói chụp:</label>
-            <input type="text" id="admin-package-name" class="form-input" placeholder="VD: Cuoi_Tron_Goi">
-          </div>
+        <div class="form-group">
+          <label class="form-label" for="admin-client-name">Tên khách hàng / Mã HĐ:</label>
+          <input type="text" id="admin-client-name" class="form-input" placeholder="VD: Anh Nam & Chị Linh">
         </div>
 
         <div class="form-group">
@@ -835,7 +829,7 @@
             <span>Mã định danh ngắn (dùng tạo link theo tên khách):</span>
           </label>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:12px;color:var(--ink-muted);font-family:monospace;">?k=</span>
+            <span style="font-size:12.5px;color:var(--ink-muted);font-family:monospace;white-space:nowrap;">?k=</span>
             <input type="text" id="admin-short-slug" class="form-input" placeholder="VD: namlinh hoặc doicuoi2111" style="font-family:monospace;">
           </div>
           <span style="font-size:11.5px;color:var(--ink-muted);">Hệ thống tự động điền theo tên khách hoặc bạn có thể tự chỉnh sửa.</span>
@@ -1150,9 +1144,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.12" defer></script>
+  <script src="js/pwa.js?v=10.13" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.12"></script>
+  <script type="module" src="js/app.js?v=10.13"></script>
 </body>
 </html>

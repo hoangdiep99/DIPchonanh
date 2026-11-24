@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.12';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.12';
-import { FaceFilterEngine } from './face-filter.js?v=10.12';
+import { STUDIO_CONFIG } from '../config.js?v=10.13';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.13';
+import { FaceFilterEngine } from './face-filter.js?v=10.13';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -664,7 +664,7 @@ export class AdminManager {
       chip.className = 'preset-chip';
       chip.textContent = preset.label;
       chip.addEventListener('click', () => {
-        this.packageInput.value = preset.value;
+        if (this.packageInput) this.packageInput.value = preset.value;
         this.limitInput.value = preset.limit;
       });
       this.presetChipsEl.appendChild(chip);
@@ -679,7 +679,7 @@ export class AdminManager {
     this.editingIndex = index;
     this.driveInput.value = item.folderId;
     this.clientInput.value = item.client;
-    this.packageInput.value = item.pkg;
+    if (this.packageInput) this.packageInput.value = item.pkg || '';
     this.shortSlugInput.value = item.slug || toSlug(item.client);
     this.limitInput.value = item.limit || '';
     if (this.shootDateInput) this.shootDateInput.value = item.time || new Date().toLocaleDateString('vi-VN');
@@ -704,7 +704,7 @@ export class AdminManager {
 
     this.driveInput.value = '';
     this.clientInput.value = '';
-    this.packageInput.value = '';
+    if (this.packageInput) this.packageInput.value = '';
     this.shortSlugInput.value = '';
     this.limitInput.value = '';
     if (this.shootDateInput) this.shootDateInput.value = new Date().toLocaleDateString('vi-VN');
@@ -725,7 +725,7 @@ export class AdminManager {
     }
 
     const client = this.clientInput.value.trim() || 'Khach_Hang';
-    const pkg = this.packageInput.value.trim() || 'Tieu_Chuan';
+    const pkg = (this.packageInput?.value || '').trim() || 'Album Tiêu Chuẩn';
     const slug = (this.shortSlugInput.value.trim() || toSlug(client)).toLowerCase();
     const limit = parseInt(this.limitInput.value, 10) || 0;
     const download = this.downloadToggle.checked ? 1 : 0;
@@ -1206,7 +1206,7 @@ export class AdminManager {
         e.stopPropagation();
         this.driveInput.value = item.folderId;
         this.clientInput.value = item.client;
-        this.packageInput.value = item.pkg;
+        if (this.packageInput) this.packageInput.value = item.pkg || '';
         if (this.shortSlugInput) this.shortSlugInput.value = item.slug || '';
         this.startAutoScanForAlbum(item.folderId, item.slug, true);
         this.aiScanBox?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
