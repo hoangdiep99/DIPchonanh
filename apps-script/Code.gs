@@ -50,6 +50,23 @@ function doGet(e) {
       });
     }
 
+    // 0.1. Phân hệ Đồng Bộ Cụm Khuôn Mặt Đám Mây (?action=get_clusters&slug=...)
+    if (action === 'get_clusters') {
+      var slugKey = (params.slug || '').toLowerCase().trim();
+      var key = 'clusters_' + (slugKey || folderId);
+      var rawClusters = PropertiesService.getScriptProperties().getProperty(key);
+      if (rawClusters) {
+        return jsonResponse({
+          status: 'success',
+          clusters: JSON.parse(rawClusters)
+        });
+      }
+      return jsonResponse({
+        status: 'not_found',
+        message: 'Chưa có dữ liệu khuôn mặt'
+      });
+    }
+
     if (!folderId) {
       return jsonResponse({
         status: 'error',
@@ -171,6 +188,18 @@ function doPost(e) {
       if (slug && albumData.folderId) {
         PropertiesService.getScriptProperties().setProperty('album_' + slug, JSON.stringify(albumData));
         return jsonResponse({ status: 'success', message: 'Đã lưu danh bạ album cho slug: ' + slug });
+      }
+    }
+
+    // 0.1. Phân hệ Lưu Cụm Khuôn Mặt Đám Mây (action=save_clusters)
+    if (data.action === 'save_clusters') {
+      var slugCluster = (data.slug || '').toLowerCase().trim();
+      var folderIdCluster = data.folderId || '';
+      var clustersList = data.clusters || [];
+      if ((slugCluster || folderIdCluster) && Array.isArray(clustersList) && clustersList.length > 0) {
+        var cKey = 'clusters_' + (slugCluster || folderIdCluster);
+        PropertiesService.getScriptProperties().setProperty(cKey, JSON.stringify(clustersList));
+        return jsonResponse({ status: 'success', message: 'Đã lưu cụm khuôn mặt lên đám mây' });
       }
     }
 

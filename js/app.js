@@ -1027,6 +1027,8 @@ class AppController {
     this.faceClustersGrid = document.getElementById('face-clusters-grid');
     this.faceBtnRescan = document.getElementById('face-btn-rescan');
     this.faceBtnCustomSample = document.getElementById('face-btn-custom-sample');
+    this.faceBtnSyncCloud = document.getElementById('face-btn-sync-cloud');
+    this.faceBtnDownloadJson = document.getElementById('face-btn-download-json');
     this.faceClusters = [];
 
     // Floating background scan pill
@@ -1104,6 +1106,14 @@ class AppController {
 
     this.faceBtnRescan?.addEventListener('click', () => {
       this.startAutoClusterScan();
+    });
+
+    this.faceBtnSyncCloud?.addEventListener('click', async () => {
+      await this.syncClustersToCloud();
+    });
+
+    this.faceBtnDownloadJson?.addEventListener('click', () => {
+      this.downloadClustersJson();
     });
 
     this.faceBtnCustomSample?.addEventListener('click', () => {
@@ -1600,20 +1610,116 @@ class AppController {
     }
   }
 
+  async syncClustersToCloud() {
+    if (!this.faceClusters || this.faceClusters.length === 0) {
+      this.showToast('Chưa có dữ liệu khuôn mặt để đồng bộ!', 'warning');
+      return;
+    }
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (!webhookUrl) {
+      this.showToast('Chưa cấu hình Google Apps Script Webhook trong config.js', 'warning');
+      return;
+    }
+
+    const slug = this.slug || new URLSearchParams(window.location.search).get('k') || '';
+    const clusterData = this.faceClusters.map((c) => ({
+      id: c.id,
+      label: c.label,
+      avatarUrl: c.avatarUrl,
+      photoCount: c.photoCount,
+      photoIds: Array.from(c.photoIds),
+    }));
+
+    try {
+      this.showToast('☁️ Đang đồng bộ cụm người lên đám mây...', 'info');
+      await fetch(webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_clusters',
+          folderId: this.folderId,
+          slug: slug,
+          clusters: clusterData,
+        }),
+      });
+      this.showToast(`🎉 Đã đồng bộ ${clusterData.length} cụm người lên đám mây! Mọi thiết bị khác mở lên sẽ có ngay.`, 'success');
+    } catch (err) {
+      console.warn('Lỗi đồng bộ đám mây:', err);
+      this.showToast('Không thể kết nối đám mây: ' + err.message, 'error');
+    }
+  }
+
+  downloadClustersJson() {
+    if (!this.faceClusters || this.faceClusters.length === 0) {
+      this.showToast('Chưa có dữ liệu khuôn mặt để tải!', 'warning');
+      return;
+    }
+    const slug = this.slug || new URLSearchParams(window.location.search).get('k') || 'album';
+    const clusterData = this.faceClusters.map((c) => ({
+      id: c.id,
+      label: c.label,
+      avatarUrl: c.avatarUrl,
+      photoCount: c.photoCount,
+      photoIds: Array.from(c.photoIds),
+    }));
+
+    const exportObj = {
+      slug: slug,
+      folderId: this.folderId,
+      totalPhotos: this.allPhotos ? this.allPhotos.length : 0,
+      totalClusters: clusterData.length,
+      createdAt: new Date().toISOString(),
+      clusters: clusterData,
+    };
+
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `faces_${slug}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.showToast(`Đã tải file faces_${slug}.json! Bạn có thể lưu vào thư mục data/ trên GitHub.`, 'success');
+  }
+
   saveCachedClusters() {
     if (!this.faceClusters || this.faceClusters.length === 0) return;
+    const slug = this.slug || new URLSearchParams(window.location.search).get('k') || '';
+    const clusterData = this.faceClusters.map((c) => ({
+      id: c.id,
+      label: c.label,
+      avatarUrl: c.avatarUrl,
+      photoCount: c.photoCount,
+      photoIds: Array.from(c.photoIds),
+    }));
+
     try {
       const key = `studio_clusters_${this.folderId || 'demo'}`;
-      const data = this.faceClusters.map((c) => ({
-        id: c.id,
-        label: c.label,
-        avatarUrl: c.avatarUrl,
-        photoCount: c.photoCount,
-        photoIds: Array.from(c.photoIds),
-      }));
-      localStorage.setItem(key, JSON.stringify(data));
+      localStorage.setItem(key, JSON.stringify(clusterData));
+      if (slug) {
+        localStorage.setItem(`studio_clusters_${slug}`, JSON.stringify(clusterData));
+      }
     } catch {
       // ignore
+    }
+
+    // Tự động đồng bộ ngầm lên Webhook đám mây (nếu có Webhook)
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (webhookUrl && (slug || this.folderId)) {
+      fetch(webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_clusters',
+          folderId: this.folderId,
+          slug: slug,
+          clusters: clusterData,
+        }),
+      }).catch(() => {});
     }
   }
 
@@ -1642,12 +1748,16 @@ class AppController {
               ...item,
               photoIds: new Set(item.photoIds || []),
             }));
-            this.saveCachedClusters();
+            const key = `studio_clusters_${this.folderId || 'demo'}`;
+            try {
+              localStorage.setItem(key, JSON.stringify(json.clusters));
+              if (slug) localStorage.setItem(`studio_clusters_${slug}`, JSON.stringify(json.clusters));
+            } catch (e) {}
             this.renderPeopleBar();
             this.peopleBar?.classList.remove('hidden');
             console.log(`✨ Đã nạp ${this.faceClusters.length} nhóm khuôn mặt AI InsightFace chuẩn xác từ GitHub:`, path);
             loadedFromGitHub = true;
-            break;
+            return true;
           }
         }
       } catch (e) {
@@ -1655,16 +1765,45 @@ class AppController {
       }
     }
 
-    if (loadedFromGitHub) return;
+    if (loadedFromGitHub) return true;
 
-    // 2. Dự phòng: Đọc từ bộ nhớ máy khách (LocalStorage)
+    // 2. Thử nạp từ Webhook đám mây (Google Apps Script)
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (webhookUrl && (slug || folderId)) {
+      try {
+        const syncUrl = `${webhookUrl}${webhookUrl.includes('?') ? '&' : '?'}action=get_clusters&slug=${encodeURIComponent(slug)}&folderId=${encodeURIComponent(folderId || '')}&t=${Date.now()}`;
+        const wRes = await fetch(syncUrl);
+        if (wRes.ok) {
+          const wData = await wRes.json();
+          if (wData.status === 'success' && Array.isArray(wData.clusters) && wData.clusters.length > 0) {
+            this.faceClusters = wData.clusters.map((item) => ({
+              ...item,
+              photoIds: new Set(item.photoIds || []),
+            }));
+            const key = `studio_clusters_${this.folderId || 'demo'}`;
+            try {
+              localStorage.setItem(key, JSON.stringify(wData.clusters));
+              if (slug) localStorage.setItem(`studio_clusters_${slug}`, JSON.stringify(wData.clusters));
+            } catch (e) {}
+            this.renderPeopleBar();
+            this.peopleBar?.classList.remove('hidden');
+            console.log(`☁️ Đã nạp ${this.faceClusters.length} nhóm khuôn mặt tự động từ đám mây (Webhook)!`);
+            return true;
+          }
+        }
+      } catch (err) {
+        // Webhook error ignore
+      }
+    }
+
+    // 3. Dự phòng: Đọc từ bộ nhớ máy khách (LocalStorage)
     try {
       const key = `studio_clusters_${this.folderId || 'demo'}`;
       let raw = localStorage.getItem(key);
       if (!raw && slug) {
         raw = localStorage.getItem(`studio_clusters_${slug}`);
       }
-      if (!raw) return;
+      if (!raw) return false;
       const data = JSON.parse(raw);
       if (Array.isArray(data) && data.length > 0) {
         this.faceClusters = data.map((item) => ({
@@ -1672,10 +1811,12 @@ class AppController {
           photoIds: new Set(item.photoIds),
         }));
         this.renderPeopleBar();
+        return true;
       }
     } catch {
       // ignore
     }
+    return false;
   }
 
   renderPeopleBar() {

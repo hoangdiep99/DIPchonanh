@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=9.9">
+  <link rel="stylesheet" href="css/styles.css?v=10.0">
 </head>
 <body>
 
@@ -309,7 +309,9 @@
         <div id="face-step-clusters" class="face-step-pane hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
             <span style="font-size:13px;color:var(--ink-secondary);">Chạm vào một người để xem toàn bộ ảnh của người đó:</span>
-            <div style="display:flex;gap:6px;">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" id="face-btn-sync-cloud" class="btn btn-secondary btn-sm" style="font-size:12px;" title="Đồng bộ cụm khuôn mặt lên đám mây để mọi thiết bị khác xem ngay">☁️ Đồng bộ đám mây</button>
+              <button type="button" id="face-btn-download-json" class="btn btn-ghost btn-sm" style="font-size:12px;" title="Tải file JSON khuôn mặt về để lưu vào repo GitHub">📥 Tải JSON</button>
               <button type="button" id="face-btn-custom-sample" class="btn btn-ghost btn-sm" style="font-size:12px;">Chạm ảnh mẫu</button>
               <button type="button" id="face-btn-rescan" class="btn btn-secondary btn-sm" style="font-size:12px;">🔄 Quét lại</button>
             </div>
@@ -988,6 +990,6 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=9.9"></script>
+  <script type="module" src="js/app.js?v=10.0"></script>
 </body>
 </html>
