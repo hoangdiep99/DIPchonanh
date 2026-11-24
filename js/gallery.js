@@ -240,6 +240,23 @@ export class GalleryGrid {
       badgesLeft.appendChild(scorePill);
     }
 
+    // Nhãn AI lọc ảnh lỗi (chỉ hiện khi đang mở bảng AI lọc ảnh lỗi)
+    const q = this.callbacks.getQualityInfo?.(photo.id);
+    if (q) {
+      const addBadge = (cls, text, title) => {
+        const b = document.createElement('span');
+        b.className = `q-badge ${cls}`;
+        b.textContent = text;
+        b.title = title;
+        badgesLeft.appendChild(b);
+      };
+      if (q.isBest) addBadge('q-best', '⭐ Đẹp nhất', `Tấm AI gợi ý đẹp nhất trong ${q.groupSize} ảnh giống nhau`);
+      else if (q.groupId) addBadge('q-dup', `🔁 ${q.groupIndex}/${q.groupSize}`, `Ảnh giống nhau (nhóm ${q.groupSize} ảnh)`);
+      if (q.blink) addBadge('q-blink', '😑 Nhắm mắt', 'AI nghi có người nhắm mắt');
+      if (q.blurry) addBadge('q-blur', '😵 Mờ', 'AI nghi ảnh bị mờ / rung');
+      if (q.dim) card.classList.add('q-dim');
+    }
+
     // Góc trên phải: Nút Kính Lúp (Xem To), Tim (Chọn) & Sao (Ưu tiên)
     const actions = document.createElement('div');
     actions.className = 'photo-actions';

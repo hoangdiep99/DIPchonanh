@@ -1,14 +1,15 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.18';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.18';
-import { GalleryGrid } from './gallery.js?v=10.18';
-import { LightboxModal } from './lightbox.js?v=10.18';
-import { StorageManager } from './storage.js?v=10.18';
-import { FaceFilterEngine } from './face-filter.js?v=10.18';
-import { ExportService } from './export.js?v=10.18';
-import { AdminManager } from './admin.js?v=10.18';
+import { STUDIO_CONFIG } from '../config.js?v=10.19';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.19';
+import { GalleryGrid } from './gallery.js?v=10.19';
+import { LightboxModal } from './lightbox.js?v=10.19';
+import { StorageManager } from './storage.js?v=10.19';
+import { FaceFilterEngine } from './face-filter.js?v=10.19';
+import { ExportService } from './export.js?v=10.19';
+import { AdminManager } from './admin.js?v=10.19';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.19';
 
 class AppController {
   constructor() {
@@ -35,6 +36,13 @@ class AppController {
     this.faceEngine = new FaceFilterEngine();
     this.activeFaceFilter = null; // { targetEmbedding, avatarUrl, scores: Map<id, score>, threshold }
     this.faceScoresMap = new Map();
+
+    // AI lọc ảnh lỗi (mờ / nhắm mắt / ảnh giống nhau)
+    this.qualityAnalyzer = new PhotoQualityAnalyzer(this.faceEngine);
+    this.qualityInfo = null; // Map<photoId, {blurry, blink, groupId, groupSize, groupIndex, isBest}>
+    this.qualityCounts = null;
+    this.qualityActive = false;
+    this.qualityMode = 'all'; // all | clean | dups | blink | blurry
 
     this.saveDraftTimer = null;
     this.cloudSyncDebounceTimer = null;
@@ -295,6 +303,7 @@ class AppController {
       this.currentFilter = 'all';
       this.searchQuery = '';
       this.searchInput.value = '';
+      this.setQualityMode('all', false);
       this.clearFaceFilter();
       this.updateActiveFilterPill();
       this.applyFilters();
@@ -303,7 +312,7 @@ class AppController {
     this.btnRetryLoad.addEventListener('click', () => this.loadAlbumData());
 
     // Filter pills
-    const pills = document.querySelectorAll('.filter-pill');
+    const pills = document.querySelectorAll('.filter-pill[data-filter]');
     pills.forEach((p) => {
       p.addEventListener('click', () => {
         this.currentFilter = p.dataset.filter;
@@ -324,11 +333,14 @@ class AppController {
 
     this.btnClearFaceFilter.addEventListener('click', () => this.clearFaceFilter());
 
+    this.initQualityPanel();
+
     // Khởi tạo GalleryGrid
     this.galleryGrid = new GalleryGrid(this.galleryGridEl, {
       allowDownload: this.allowDownload,
       getSelection: (id) => this.getPhotoSelection(id),
       getFaceScore: (id) => this.faceScoresMap.get(id),
+      getQualityInfo: (id) => this.getQualityBadgeInfo(id),
       getCurrentFilter: () => this.currentFilter,
       onToggleHeart: (id) => this.toggleHeart(id),
       onToggleStar: (id) => this.toggleStar(id),
@@ -879,6 +891,7 @@ class AppController {
 
       this.allPhotos = data.photos || [];
       this.folders = data.folders || [];
+      this.resetQualityState();
 
       if (this.folderId && this.allPhotos.length > 0) {
         this.saveCachedAlbumCover(this.folderId, this.allPhotos[0], this.allPhotos.length);
@@ -975,7 +988,7 @@ class AppController {
   }
 
   updateActiveFilterPill() {
-    const pills = document.querySelectorAll('.filter-pill');
+    const pills = document.querySelectorAll('.filter-pill[data-filter]');
     pills.forEach((p) => {
       p.classList.toggle('is-active', p.dataset.filter === this.currentFilter);
     });
@@ -1002,6 +1015,20 @@ class AppController {
         return score >= th;
       });
       this.faceBannerCount.textContent = `Tìm thấy ${list.length} bức ảnh khớp khuôn mặt`;
+    }
+
+    // 3b. AI lọc ảnh lỗi
+    if (this.qualityActive && this.qualityInfo && this.qualityMode !== 'all') {
+      const mode = this.qualityMode;
+      list = list.filter((p) => {
+        const q = this.qualityInfo.get(p.id);
+        if (!q) return mode === 'clean';
+        if (mode === 'blurry') return q.blurry;
+        if (mode === 'blink') return q.blink;
+        if (mode === 'dups') return Boolean(q.groupId);
+        if (mode === 'clean') return !q.blurry && !q.blink && (!q.groupId || q.isBest);
+        return true;
+      });
     }
 
     // 4. Lọc trạng thái (Tất cả, Đã chọn, Chưa chọn, Ưu tiên, Có ghi chú)
@@ -2554,6 +2581,158 @@ class AppController {
       alert('Quá trình quét khuôn mặt gặp lỗi: ' + err.message);
       this.closeFaceModal();
     }
+  }
+
+  // ==========================================================================
+  // AI lọc ảnh lỗi: Mờ / Nhắm mắt / Ảnh chụp liên tiếp giống nhau
+  // ==========================================================================
+  initQualityPanel() {
+    this.qualityBanner = document.getElementById('quality-banner');
+    this.qualityStatus = document.getElementById('quality-status');
+    this.qualityProgress = document.getElementById('quality-progress');
+    this.qualityProgressFill = document.getElementById('quality-progress-fill');
+    this.btnQualityOpen = document.getElementById('btn-quality-open');
+    this.btnQualityStop = document.getElementById('btn-quality-stop');
+    this.btnQualityRescan = document.getElementById('btn-quality-rescan');
+    this.btnQualityClose = document.getElementById('btn-quality-close');
+    this.qualityChips = document.querySelectorAll('.quality-chip');
+    if (!this.qualityBanner || !this.btnQualityOpen) return;
+
+    this.btnQualityOpen.addEventListener('click', () => {
+      if (this.qualityActive) this.closeQualityPanel();
+      else this.openQualityPanel();
+    });
+    this.btnQualityClose?.addEventListener('click', () => this.closeQualityPanel());
+    this.btnQualityStop?.addEventListener('click', () => {
+      this.qualityAnalyzer.stop();
+      this.qualityStatus.textContent = 'Đang dừng...';
+    });
+    this.btnQualityRescan?.addEventListener('click', () => {
+      if (this.qualityAnalyzer.isScanning) return;
+      this.qualityAnalyzer.clearCache(this.getQualityAlbumKey());
+      this.qualityInfo = null;
+      this.startQualityScan();
+    });
+    this.qualityChips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        if (chip.disabled) return;
+        this.setQualityMode(chip.dataset.qmode);
+      });
+    });
+  }
+
+  getQualityAlbumKey() {
+    return this.folderId || (this.isDemo ? 'demo' : 'local');
+  }
+
+  getQualityBadgeInfo(id) {
+    if (!this.qualityActive || !this.qualityInfo) return null;
+    const q = this.qualityInfo.get(id);
+    if (!q) return null;
+    return { ...q, dim: this.qualityMode === 'dups' && Boolean(q.groupId) && !q.isBest };
+  }
+
+  resetQualityState() {
+    if (this.qualityAnalyzer?.isScanning) this.qualityAnalyzer.stop();
+    this.qualityInfo = null;
+    this.qualityCounts = null;
+    this.qualityMode = 'all';
+    this.qualityActive = false;
+    this.qualityBanner?.classList.add('hidden');
+    this.btnQualityOpen?.classList.remove('is-active');
+  }
+
+  openQualityPanel() {
+    if (!this.allPhotos.length) {
+      this.showToast('Album chưa có ảnh để kiểm tra', 'error');
+      return;
+    }
+    this.qualityActive = true;
+    this.qualityBanner.classList.remove('hidden');
+    this.btnQualityOpen.classList.add('is-active');
+    if (this.qualityInfo) {
+      this.renderQualityCounts();
+      this.applyFilters();
+    } else if (!this.qualityAnalyzer.isScanning) {
+      this.startQualityScan();
+    }
+  }
+
+  closeQualityPanel() {
+    if (this.qualityAnalyzer.isScanning) this.qualityAnalyzer.stop();
+    this.qualityActive = false;
+    this.qualityMode = 'all';
+    this.qualityBanner.classList.add('hidden');
+    this.btnQualityOpen.classList.remove('is-active');
+    this.applyFilters();
+  }
+
+  setQualityMode(mode, rerender = true) {
+    this.qualityMode = mode || 'all';
+    this.qualityChips?.forEach((c) => c.classList.toggle('is-active', c.dataset.qmode === this.qualityMode));
+    if (rerender) {
+      this.applyFilters();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  async startQualityScan() {
+    const photos = this.allPhotos;
+    const albumKey = this.getQualityAlbumKey();
+    this.qualityChips.forEach((c) => { c.disabled = true; });
+    this.qualityProgress.classList.remove('hidden');
+    this.qualityProgressFill.style.width = '0%';
+    this.btnQualityStop.classList.remove('hidden');
+    this.btnQualityRescan.classList.add('hidden');
+    this.qualityStatus.textContent = 'Đang khởi động AI (lần đầu mất vài giây)...';
+
+    try {
+      const raw = await this.qualityAnalyzer.analyzeAlbum(photos, albumKey, ({ current, total, msg }) => {
+        const pct = total ? Math.round((current / total) * 100) : 0;
+        this.qualityProgressFill.style.width = `${pct}%`;
+        this.qualityStatus.textContent = msg || `Đang kiểm tra ${current}/${total} ảnh...`;
+      });
+      if (photos !== this.allPhotos) return; // Album đã đổi trong lúc quét
+
+      const { info, counts } = this.qualityAnalyzer.summarize(photos, raw);
+      this.qualityInfo = info;
+      this.qualityCounts = counts;
+      this.renderQualityCounts();
+      if (this.qualityActive) this.applyFilters();
+
+      if (counts.analyzed < counts.total) {
+        this.showToast(`⏸ Đã kiểm tra ${counts.analyzed}/${counts.total} ảnh. Bấm "AI lọc ảnh lỗi" lần nữa để quét tiếp.`);
+      } else {
+        this.showToast(`✨ Đã kiểm tra xong ${counts.total} ảnh`, 'success');
+      }
+    } catch (err) {
+      console.error('Lỗi AI lọc ảnh lỗi:', err);
+      this.qualityStatus.textContent = `Lỗi: ${err.message || 'Không thể kiểm tra ảnh'}`;
+      this.showToast('Không thể chạy AI lọc ảnh lỗi. Vui lòng thử lại.', 'error');
+    } finally {
+      this.qualityChips.forEach((c) => { c.disabled = false; });
+      this.btnQualityStop.classList.add('hidden');
+      this.btnQualityRescan.classList.remove('hidden');
+      this.qualityProgress.classList.add('hidden');
+    }
+  }
+
+  renderQualityCounts() {
+    const c = this.qualityCounts;
+    if (!c) return;
+    const set = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = v;
+    };
+    set('q-count-all', c.total);
+    set('q-count-clean', c.clean);
+    set('q-count-dups', c.dupPhotos);
+    set('q-count-blink', c.blink);
+    set('q-count-blurry', c.blurry);
+    const partial = c.analyzed < c.total ? ` (đã quét ${c.analyzed}/${c.total})` : '';
+    this.qualityStatus.textContent =
+      `${c.groups} nhóm ảnh giống nhau • ${c.blink} ảnh nghi nhắm mắt • ${c.blurry} ảnh nghi mờ${partial}`;
+    this.setQualityMode(this.qualityMode, false);
   }
 
   clearFaceFilter() {

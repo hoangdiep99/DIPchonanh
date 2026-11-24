@@ -89,4 +89,13 @@ export const STUDIO_CONFIG = {
     // Ngưỡng gom cụm nhân vật khi quét album (giữ thấp để không tách 1 người thành nhiều nhóm)
     clusterThreshold: 0.52,
   },
+  // AI lọc ảnh lỗi (mờ / nhắm mắt / ảnh chụp liên tiếp giống nhau)
+  qualityAI: {
+    // Ảnh có độ nét thấp hơn 38% mức trung bình của album -> nghi mờ (tăng để bắt chặt hơn)
+    blurRatio: 0.38,
+    // Tỉ lệ mở mắt < 0.18 -> nghi nhắm mắt (tăng để bắt nhiều hơn, giảm để ít báo nhầm)
+    blinkEar: 0.18,
+    // Độ khác nhau tối đa giữa 2 ảnh liên tiếp để coi là giống nhau (0-64, càng lớn gom càng nhiều)
+    dupHamming: 10,
+  },
 };

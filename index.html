@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.18">
+  <link rel="stylesheet" href="css/styles.css?v=10.19">
 </head>
 <body>
 
@@ -141,6 +141,32 @@
     </div>
   </section>
 
+  <!-- AI Kiểm tra chất lượng ảnh: Mờ / Nhắm mắt / Ảnh liên tiếp giống nhau -->
+  <section id="quality-banner" class="quality-banner hidden" aria-label="AI lọc ảnh lỗi">
+    <div class="quality-card">
+      <div class="quality-head">
+        <div>
+          <div class="quality-title">✨ AI lọc ảnh lỗi</div>
+          <div id="quality-status" class="quality-sub">Đang chuẩn bị...</div>
+        </div>
+        <div class="quality-head-actions">
+          <button type="button" id="btn-quality-stop" class="btn btn-ghost btn-sm hidden">⏸ Dừng</button>
+          <button type="button" id="btn-quality-rescan" class="btn btn-ghost btn-sm hidden" title="Xoá kết quả cũ và quét lại">🔄 Quét lại</button>
+          <button type="button" id="btn-quality-close" class="btn btn-secondary btn-sm">Đóng</button>
+        </div>
+      </div>
+      <div id="quality-progress" class="quality-progress"><div id="quality-progress-fill" class="quality-progress-fill"></div></div>
+      <div id="quality-chips" class="quality-chips">
+        <button type="button" class="quality-chip is-active" data-qmode="all">Tất cả <span id="q-count-all" class="pill-num">0</span></button>
+        <button type="button" class="quality-chip" data-qmode="clean">✅ Ảnh đạt <span id="q-count-clean" class="pill-num">0</span></button>
+        <button type="button" class="quality-chip" data-qmode="dups">🔁 Ảnh giống nhau <span id="q-count-dups" class="pill-num">0</span></button>
+        <button type="button" class="quality-chip" data-qmode="blink">😑 Nhắm mắt <span id="q-count-blink" class="pill-num">0</span></button>
+        <button type="button" class="quality-chip" data-qmode="blurry">😵 Mờ / rung <span id="q-count-blurry" class="pill-num">0</span></button>
+      </div>
+      <div id="quality-hint" class="quality-hint">AI chỉ gợi ý — ảnh mờ có chủ đích (xoá phông, chuyển động) có thể bị đánh dấu nhầm.</div>
+    </div>
+  </section>
+
   <!-- Màn hình Trang Chủ: Tra cứu & Danh sách tất cả Album (hiển thị khi vào link gốc không kèm ?k=/?folder=) -->
   <section id="home-portal" class="home-portal hidden" aria-label="Tìm kiếm và danh sách album ảnh">
     <div class="home-portal-inner">
@@ -234,6 +260,7 @@
         <button type="button" class="filter-pill" data-filter="unselected">Chưa chọn <span id="count-pill-unselected" class="pill-num">0</span></button>
         <button type="button" class="filter-pill" data-filter="priority">Ưu tiên ★ <span id="count-pill-priority" class="pill-num">0</span></button>
         <button type="button" class="filter-pill" data-filter="hasNote">Có ghi chú <span id="count-pill-note" class="pill-num">0</span></button>
+        <button type="button" id="btn-quality-open" class="filter-pill quality-pill" title="AI tìm ảnh mờ, nhắm mắt và ảnh chụp liên tiếp giống nhau">✨ AI lọc ảnh lỗi</button>
       </div>
 
       <!-- Nút hành động một tay -->
@@ -1186,9 +1213,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.18" defer></script>
+  <script src="js/pwa.js?v=10.19" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.18"></script>
+  <script type="module" src="js/app.js?v=10.19"></script>
 </body>
 </html>

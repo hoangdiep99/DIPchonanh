@@ -4067,3 +4067,125 @@ a {
   margin-top: 2px;
   word-break: break-word;
 }
+
+
+/* ==========================================================================
+   AI lọc ảnh lỗi (Mờ / Nhắm mắt / Ảnh liên tiếp giống nhau) — v10.19
+   ========================================================================== */
+.quality-pill {
+  color: #7C3AED;
+  font-weight: 600;
+}
+.quality-pill.is-active {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6D28D9;
+}
+
+.quality-banner {
+  max-width: 1480px;
+  margin: 12px auto 0;
+  padding: 0 14px;
+}
+@media (min-width: 768px) {
+  .quality-banner { padding: 0 28px; }
+}
+
+.quality-card {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  box-shadow: var(--shadow-sm);
+}
+
+.quality-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.quality-head-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.quality-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+.quality-sub {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+.quality-progress {
+  height: 4px;
+  margin: 10px 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+.quality-progress.hidden { display: none; }
+.quality-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #8B5CF6, #EC4899);
+  transition: width 0.3s ease;
+}
+
+.quality-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.quality-chips::-webkit-scrollbar { display: none; }
+.quality-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-surface);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.quality-chip:hover { background: var(--bg-subtle); }
+.quality-chip.is-active {
+  background: var(--ink-primary);
+  border-color: var(--ink-primary);
+  color: #FFFFFF;
+}
+.quality-chip:disabled { opacity: 0.45; cursor: default; }
+
+.quality-hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+/* Nhãn chất lượng trên từng ảnh */
+.q-badge {
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.q-badge.q-blur { background: rgba(220, 38, 38, 0.85); }
+.q-badge.q-blink { background: rgba(234, 88, 12, 0.88); }
+.q-badge.q-dup { background: rgba(24, 24, 27, 0.72); }
+.q-badge.q-best { background: rgba(5, 150, 105, 0.9); }
+.photo-badges-left { flex-wrap: wrap; max-width: calc(100% - 110px); }
+.photo-card.q-dim .photo-thumb { opacity: 0.55; }

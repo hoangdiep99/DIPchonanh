@@ -8,8 +8,21 @@
  *    3. Quét tuần tự theo lô (batchSize=6 ảnh thumbnail w400) để chống lag UI.
  *    4. Tính Cosine Similarity / human.match.similarity, lọc ảnh khớp và lưu cache IndexedDB.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.18';
-import { StorageManager } from './storage.js?v=10.18';
+import { STUDIO_CONFIG } from '../config.js?v=10.19';
+import { StorageManager } from './storage.js?v=10.19';
+
+const PhotoEyeMath = {
+  // Eye Aspect Ratio: (|p2-p6| + |p3-p5|) / (2|p1-p4|) — mắt mở ~0.25-0.35, nhắm < 0.18
+  ear(mesh, idx) {
+    if (!mesh || mesh.length < 400) return null;
+    const p = idx.map((i) => mesh[i]);
+    if (p.some((pt) => !pt)) return null;
+    const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const horiz = d(p[0], p[3]);
+    if (!horiz) return null;
+    return (d(p[1], p[5]) + d(p[2], p[4])) / (2 * horiz);
+  },
+};
 
 export class FaceFilterEngine {
   constructor() {
@@ -186,6 +199,28 @@ export class FaceFilterEngine {
   }
 
   /**
+   * Chuẩn hoá kết quả human.detect -> mảng { box, embedding, eyes:[earTrái, earPhải] }
+   * (lưu thêm tỉ lệ mở mắt để tính năng AI lọc ảnh nhắm mắt dùng lại, và giải phóng tensor GPU)
+   */
+  facesFromResult(res) {
+    const out = [];
+    for (const f of res?.face || []) {
+      try {
+        if (f.tensor && typeof f.tensor.dispose === 'function') f.tensor.dispose();
+      } catch (e) {}
+      if (!f.embedding || f.embedding.length === 0) continue;
+      const earL = PhotoEyeMath.ear(f.mesh, [33, 160, 158, 133, 153, 144]);
+      const earR = PhotoEyeMath.ear(f.mesh, [362, 385, 387, 263, 373, 380]);
+      out.push({
+        box: Array.isArray(f.box) ? Array.from(f.box) : f.box,
+        embedding: Array.from(f.embedding),
+        eyes: earL != null && earR != null ? [Math.round(earL * 1000) / 1000, Math.round(earR * 1000) / 1000] : null,
+      });
+    }
+    return out;
+  }
+
+  /**
    * Tính Cosine Similarity giữa 2 vector embedding
    */
   cosineSimilarity(vecA, vecB) {
@@ -317,20 +352,11 @@ export class FaceFilterEngine {
               const img = await this.loadImageElement(photo.aiUrl);
               const res = await human.detect(img);
 
-              const detectedFaces = [];
+              const detectedFaces = this.facesFromResult(res);
               let maxSim = 0;
-
-              if (res.face && res.face.length > 0) {
-                for (const f of res.face) {
-                  if (f.embedding && f.embedding.length > 0) {
-                    detectedFaces.push({
-                      box: f.box,
-                      embedding: Array.from(f.embedding),
-                    });
-                    const sim = this.cosineSimilarity(targetEmbedding, f.embedding);
-                    if (sim > maxSim) maxSim = sim;
-                  }
-                }
+              for (const f of detectedFaces) {
+                const sim = this.cosineSimilarity(targetEmbedding, f.embedding);
+                if (sim > maxSim) maxSim = sim;
               }
 
               // Lưu vào IndexedDB cho các lần lọc sau
@@ -470,21 +496,14 @@ export class FaceFilterEngine {
               try {
                 const img = await this.loadImageElement(photo.aiUrl);
                 const res = await human.detect(img);
-                const detectedFaces = [];
-
-                if (res.face && res.face.length > 0) {
-                  for (const f of res.face) {
-                    if (f.embedding && f.embedding.length > 0) {
-                      const emb = Array.from(f.embedding);
-                      detectedFaces.push({ box: f.box, embedding: emb });
-                      allDetected.push({
-                        photoId: photo.id,
-                        photo: photo,
-                        box: f.box,
-                        embedding: emb,
-                      });
-                    }
-                  }
+                const detectedFaces = this.facesFromResult(res);
+                for (const f of detectedFaces) {
+                  allDetected.push({
+                    photoId: photo.id,
+                    photo: photo,
+                    box: f.box,
+                    embedding: f.embedding,
+                  });
                 }
 
                 await StorageManager.setCachedVector(photo.id, detectedFaces);
