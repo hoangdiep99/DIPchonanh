@@ -9,10 +9,13 @@
   <meta name="apple-mobile-web-app-title" content="DIPchonanh">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#ffffff">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.2">
+  <link rel="stylesheet" href="css/styles.css?v=10.5">
 </head>
 <body>
 
@@ -35,6 +38,9 @@
         </div>
 
         <div class="header-actions">
+          <button type="button" id="btn-pwa-install" class="btn btn-pwa-install hidden" title="Cài đặt DIPchonanh ra màn hình chính như App điện thoại">
+            <span>📲</span> <span class="pwa-install-label">Cài App</span>
+          </button>
           <a href="#admin" id="btn-to-admin" class="btn btn-admin-nav" title="Đăng nhập tài khoản Quản trị Studio">
             <span id="admin-nav-icon">👤</span> <span id="admin-nav-text">Quản trị</span>
           </a>
@@ -989,10 +995,40 @@
     </div>
   </div>
 
+  <!-- Modal Hướng dẫn Cài đặt App PWA cho iPhone / iPad (Safari) -->
+  <div id="pwa-ios-modal" class="pwa-ios-modal hidden" role="dialog" aria-modal="true" aria-labelledby="pwa-ios-title">
+    <div id="pwa-ios-backdrop" class="pwa-ios-backdrop"></div>
+    <div class="pwa-ios-sheet">
+      <div class="pwa-ios-header">
+        <div class="pwa-ios-app-badge">
+          <img src="assets/icons/icon-192.png" alt="DIPchonanh" class="pwa-ios-app-icon">
+          <div>
+            <h3 id="pwa-ios-title" class="pwa-ios-title">Cài đặt App DIPchonanh</h3>
+            <p class="pwa-ios-subtitle">Mở toàn màn hình mượt mà như ứng dụng gốc</p>
+          </div>
+        </div>
+        <button type="button" id="pwa-ios-close" class="pwa-ios-close-btn" aria-label="Đóng">✕</button>
+      </div>
+      <div class="pwa-ios-steps">
+        <div class="pwa-ios-step">
+          <span class="pwa-step-num">1</span>
+          <p>Chạm vào biểu tượng <strong>Chia sẻ (⬆️)</strong> ở thanh dưới cùng của trình duyệt Safari (hoặc dấu <strong>⋮</strong> trên Chrome).</p>
+        </div>
+        <div class="pwa-ios-step">
+          <span class="pwa-step-num">2</span>
+          <p>Cuộn xuống và chọn <strong>“Thêm vào MH chính”</strong> (<em>Add to Home Screen</em>), sau đó bấm <strong>Thêm</strong>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Thư viện nén file ZIP cho tải hàng loạt -->
   <script src="js/jszip.min.js"></script>
 
+  <!-- Script PWA (Cài đặt App độc lập) -->
+  <script src="js/pwa.js?v=10.5" defer></script>
+
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.2"></script>
+  <script type="module" src="js/app.js?v=10.5"></script>
 </body>
 </html>
