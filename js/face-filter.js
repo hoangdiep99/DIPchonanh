@@ -547,5 +547,4 @@ export class FaceFilterEngine {
       this.isCancelled = false;
     }
   }
-  }
 }

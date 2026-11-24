@@ -1599,8 +1599,6 @@ class AppController {
       this.updateFaceScanControls('idle');
     }
   }
-    }
-  }
 
   saveCachedClusters() {
     if (!this.faceClusters || this.faceClusters.length === 0) return;
