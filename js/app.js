@@ -62,7 +62,9 @@ class AppController {
       window.addEventListener('hashchange', () => this.handleRoute());
       this.handleRoute();
 
-      await this.loadAlbumData();
+      if (!this.isHomePortal) {
+        await this.loadAlbumData();
+      }
     } catch (err) {
       console.error('Lỗi khởi động ứng dụng:', err);
       if (this.showState) {
@@ -109,9 +111,11 @@ class AppController {
       client = client.replace(/[-_]+/g, ' ');
     }
 
+    const isDemoExplicit = params.get('demo') === '1';
+    this.isHomePortal = !folder && !shortKey && !isDemoExplicit;
     this.slug = shortKey || '';
     this.folderId = folder;
-    this.clientName = client || 'Khách hàng';
+    this.clientName = client || (this.isHomePortal ? (STUDIO_CONFIG.studioSubtitle || 'Hệ thống chọn ảnh trực tuyến') : 'Khách hàng');
     this.packageName = pkg || 'Album Tiêu Chuẩn';
     this.limit = limit;
     this.allowDownload = download;
@@ -157,6 +161,18 @@ class AppController {
 
   bindDOM() {
     this.siteHeader = document.getElementById('site-header');
+    this.headerSubRow = document.querySelector('.header-sub-row');
+    this.headerNavRow = document.querySelector('.header-nav-row');
+    this.homePortalEl = document.getElementById('home-portal');
+    this.portalSearchInput = document.getElementById('portal-search-input');
+    this.portalSearchClear = document.getElementById('portal-search-clear');
+    this.portalSyncBadge = document.getElementById('portal-sync-badge');
+    this.portalBtnRefresh = document.getElementById('portal-btn-refresh');
+    this.portalAlbumCount = document.getElementById('portal-album-count');
+    this.portalAlbumsGrid = document.getElementById('portal-albums-grid');
+    this.portalEmptyState = document.getElementById('portal-empty-state');
+    this.portalEmptyMsg = document.getElementById('portal-empty-msg');
+    this.portalBtnClearSearch = document.getElementById('portal-btn-clear-search');
     this.galleryContainer = document.getElementById('gallery-container');
     this.floatingBarWrap = document.getElementById('floating-bar-wrap');
     this.adminView = document.getElementById('admin-view');
@@ -326,14 +342,30 @@ class AppController {
     const isAdmin = window.location.hash === '#admin';
     if (isAdmin) {
       this.siteHeader.classList.add('hidden');
+      this.homePortalEl?.classList.add('hidden');
       this.galleryContainer.classList.add('hidden');
       this.floatingBarWrap.classList.add('hidden');
       this.faceActiveBanner.classList.add('hidden');
       if (this.peopleBar) this.peopleBar.classList.add('hidden');
       this.adminView.classList.remove('hidden');
       this.adminManager?.checkAuthState();
+    } else if (this.isHomePortal) {
+      this.siteHeader.classList.remove('hidden');
+      this.headerSubRow?.classList.add('hidden');
+      this.headerNavRow?.classList.add('hidden');
+      this.homePortalEl?.classList.remove('hidden');
+      this.galleryContainer.classList.add('hidden');
+      this.floatingBarWrap.classList.add('hidden');
+      this.faceActiveBanner.classList.add('hidden');
+      if (this.peopleBar) this.peopleBar.classList.add('hidden');
+      this.adminView.classList.add('hidden');
+      this.updateAdminHeaderState();
+      this.initHomePortal();
     } else {
       this.siteHeader.classList.remove('hidden');
+      this.headerSubRow?.classList.remove('hidden');
+      this.headerNavRow?.classList.remove('hidden');
+      this.homePortalEl?.classList.add('hidden');
       this.galleryContainer.classList.remove('hidden');
       this.floatingBarWrap.classList.remove('hidden');
       this.adminView.classList.add('hidden');
@@ -344,6 +376,220 @@ class AppController {
         this.faceActiveBanner.classList.remove('hidden');
       }
       this.updateAdminHeaderState();
+    }
+  }
+
+  // --- TRANG CHỦ TRA CỨU & DANH SÁCH TẤT CẢ ALBUM (HOME PORTAL) ---
+  normalizeSearchText(str) {
+    return (str || '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase()
+      .replace(/[-_/.]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  initHomePortal() {
+    if (!this.portalInitialized) {
+      this.portalInitialized = true;
+      this.portalAlbums = [];
+      this.portalQuery = '';
+
+      this.portalSearchInput?.addEventListener('input', () => {
+        this.portalQuery = this.portalSearchInput.value.trim();
+        this.portalSearchClear?.classList.toggle('hidden', !this.portalQuery);
+        this.renderPortalAlbums();
+      });
+
+      this.portalSearchInput?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const val = this.portalSearchInput.value.trim();
+        if (!val) return;
+
+        // Nếu dán link hoặc ID Google Drive trực tiếp -> mở luôn album
+        const driveId = extractDriveFolderId(val);
+        if (driveId && val.length >= 20) {
+          const baseOrigin = window.location.origin + window.location.pathname;
+          window.location.href = `${baseOrigin}?folder=${encodeURIComponent(driveId)}`;
+          return;
+        }
+
+        // Nếu kết quả lọc còn đúng 1 album -> mở luôn khi bấm Enter
+        const filtered = this.getFilteredPortalAlbums();
+        if (filtered.length === 1) {
+          window.location.href = this.buildPortalAlbumUrl(filtered[0]);
+        }
+      });
+
+      const resetSearch = () => {
+        if (this.portalSearchInput) {
+          this.portalSearchInput.value = '';
+          this.portalSearchInput.focus();
+        }
+        this.portalQuery = '';
+        this.portalSearchClear?.classList.add('hidden');
+        this.renderPortalAlbums();
+      };
+
+      this.portalSearchClear?.addEventListener('click', resetSearch);
+      this.portalBtnClearSearch?.addEventListener('click', resetSearch);
+      this.portalBtnRefresh?.addEventListener('click', () => this.loadPortalAlbums(true));
+    }
+
+    this.loadPortalAlbums(false);
+  }
+
+  buildPortalAlbumUrl(item) {
+    const baseOrigin = window.location.origin + window.location.pathname;
+    if (item.slug && item.folderId) {
+      let url = `${baseOrigin}?k=${encodeURIComponent(item.slug)}&f=${encodeURIComponent(item.folderId)}`;
+      if (item.limit > 0) url += `&limit=${item.limit}`;
+      return url;
+    }
+    if (item.folderId) {
+      return `${baseOrigin}?folder=${encodeURIComponent(item.folderId)}&khach=${encodeURIComponent(item.client || '')}`;
+    }
+    return item.shortUrl || item.link || baseOrigin;
+  }
+
+  mergePortalAlbumLists(lists) {
+    const map = new Map();
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      for (const item of list) {
+        if (!item || (!item.folderId && !item.slug)) continue;
+        const key = (item.folderId || item.slug).toString().trim();
+        if (!map.has(key)) {
+          map.set(key, item);
+        } else {
+          const prev = map.get(key);
+          if ((item.updatedAt || 0) >= (prev.updatedAt || 0)) {
+            map.set(key, { ...prev, ...item });
+          }
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  }
+
+  async loadPortalAlbums(forceToast = false) {
+    // 1. Nạp tức thì từ config.js + localStorage để hiển thị không độ trễ
+    let localList = [];
+    try {
+      localList = JSON.parse(localStorage.getItem('studio_admin_history')) || [];
+    } catch {
+      localList = [];
+    }
+    const defaultList = STUDIO_CONFIG.defaultAlbums || [];
+    this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList]);
+    this.renderPortalAlbums();
+
+    // 2. Kéo danh sách đầy đủ mới nhất từ Đám mây (Google Apps Script)
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (!webhookUrl) {
+      if (this.portalSyncBadge) this.portalSyncBadge.textContent = `Hiển thị ${this.portalAlbums.length} album có sẵn`;
+      return;
+    }
+
+    if (this.portalSyncBadge) this.portalSyncBadge.textContent = '☁️ Đang cập nhật danh sách album mới nhất...';
+    if (this.portalBtnRefresh) this.portalBtnRefresh.disabled = true;
+
+    try {
+      const resp = await fetch(`${webhookUrl}?action=get_admin_history&_t=${Date.now()}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (data && data.status === 'success' && Array.isArray(data.history) && data.history.length > 0) {
+        this.portalAlbums = this.mergePortalAlbumLists([defaultList, localList, data.history]);
+        try {
+          localStorage.setItem('studio_admin_history', JSON.stringify(this.portalAlbums.slice(0, 50)));
+        } catch {}
+        this.renderPortalAlbums();
+        if (this.portalSyncBadge) {
+          this.portalSyncBadge.textContent = `🟢 Đã đồng bộ ${this.portalAlbums.length} album từ Đám mây`;
+        }
+      } else if (this.portalSyncBadge) {
+        this.portalSyncBadge.textContent = `🟢 Sẵn sàng (${this.portalAlbums.length} album)`;
+      }
+    } catch (err) {
+      console.warn('Không thể tải danh sách album đám mây cho trang chủ:', err);
+      if (this.portalSyncBadge) {
+        this.portalSyncBadge.textContent = `🟢 Đang hiển thị ${this.portalAlbums.length} album`;
+      }
+    } finally {
+      if (this.portalBtnRefresh) this.portalBtnRefresh.disabled = false;
+      if (forceToast && this.showToast) {
+        this.showToast('Đã làm mới danh sách album!', 'success');
+      }
+    }
+  }
+
+  getFilteredPortalAlbums() {
+    const q = this.normalizeSearchText(this.portalQuery);
+    if (!q) return this.portalAlbums;
+    const tokens = q.split(' ').filter(Boolean);
+    return this.portalAlbums.filter((item) => {
+      const haystack = this.normalizeSearchText(
+        [item.client, item.slug, item.time, item.pkg, item.folderId].filter(Boolean).join(' ')
+      );
+      return tokens.every((tk) => haystack.includes(tk));
+    });
+  }
+
+  renderPortalAlbums() {
+    if (!this.portalAlbumsGrid) return;
+    const filtered = this.getFilteredPortalAlbums();
+
+    if (this.portalAlbumCount) {
+      this.portalAlbumCount.textContent = filtered.length;
+    }
+
+    this.portalAlbumsGrid.innerHTML = '';
+
+    if (filtered.length === 0) {
+      this.portalEmptyState?.classList.remove('hidden');
+      if (this.portalEmptyMsg) {
+        this.portalEmptyMsg.textContent = this.portalQuery
+          ? `Không tìm thấy album nào khớp với "${this.portalQuery}". Hãy thử gõ không dấu hoặc nhập ngày chụp khác nhé!`
+          : 'Chưa có album nào được tạo. Studio hãy vào mục Quản trị để tạo link album đầu tiên.';
+      }
+      return;
+    }
+
+    this.portalEmptyState?.classList.add('hidden');
+
+    for (const item of filtered) {
+      const a = document.createElement('a');
+      a.className = 'portal-album-card';
+      a.href = this.buildPortalAlbumUrl(item);
+
+      const safeClient = (item.client || item.slug || 'Album ảnh').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const safePkg = (item.pkg || 'Album Tiêu Chuẩn').replace(/_/g, ' ').replace(/</g, '&lt;');
+      const safeTime = (item.time || 'Album mới').replace(/</g, '&lt;');
+      const safeSlug = item.slug ? `?k=${item.slug.replace(/</g, '&lt;')}` : '';
+
+      a.innerHTML = `
+        <div>
+          <div class="portal-card-top">
+            <span class="portal-card-icon" aria-hidden="true">📸</span>
+            <span class="portal-card-date">📅 ${safeTime}</span>
+          </div>
+          <h4 class="portal-card-title" style="margin-top:12px;">${safeClient}</h4>
+          <div class="portal-card-meta">
+            <span class="portal-card-pkg">${safePkg}</span>
+            ${safeSlug ? `<span class="portal-card-slug">${safeSlug}</span>` : ''}
+          </div>
+        </div>
+        <div class="portal-card-footer">
+          <span>Xem &amp; chọn ảnh</span>
+          <span class="portal-card-arrow">→</span>
+        </div>
+      `;
+
+      this.portalAlbumsGrid.appendChild(a);
     }
   }
 

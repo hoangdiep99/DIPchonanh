@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.5">
+  <link rel="stylesheet" href="css/styles.css?v=10.6">
 </head>
 <body>
 
@@ -137,6 +137,49 @@
           <span id="face-threshold-val" class="tabular-nums">52%</span>
         </label>
         <button type="button" id="btn-clear-face-filter" class="btn btn-secondary btn-sm">Bỏ lọc khuôn mặt</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Màn hình Trang Chủ: Tra cứu & Danh sách tất cả Album (hiển thị khi vào link gốc không kèm ?k=/?folder=) -->
+  <section id="home-portal" class="home-portal hidden" aria-label="Tìm kiếm và danh sách album ảnh">
+    <div class="home-portal-inner">
+      <div class="portal-hero">
+        <div class="portal-eyebrow">DIPCHONANH • CHỌN ẢNH TRỰC TUYẾN</div>
+        <h2 class="portal-title">Tìm Album Ảnh Của Bạn</h2>
+        <p class="portal-subtitle">Nhập tên cô dâu chú rể, ngày chụp (VD: 24/11), gói chụp hoặc mã album để mở nhanh.</p>
+
+        <div class="portal-search-wrap">
+          <span class="portal-search-icon" aria-hidden="true">🔍</span>
+          <input
+            type="text"
+            id="portal-search-input"
+            class="portal-search-input"
+            placeholder="Tìm theo tên dâu rể, ngày chụp (VD: 24/11, việt phục, từ sơn)..."
+            autocomplete="off"
+            aria-label="Tìm kiếm album ảnh"
+          >
+          <button type="button" id="portal-search-clear" class="portal-search-clear hidden" aria-label="Xóa từ khóa">✕</button>
+        </div>
+
+        <div class="portal-quick-meta">
+          <span id="portal-sync-badge" class="portal-sync-badge">Đang đồng bộ danh sách album...</span>
+          <button type="button" id="portal-btn-refresh" class="portal-refresh-btn" title="Tải danh sách album mới nhất từ Đám mây">🔄 Làm mới</button>
+        </div>
+      </div>
+
+      <div class="portal-list-header">
+        <h3 class="portal-list-title">Tất cả Album (<span id="portal-album-count" class="tabular-nums">0</span>)</h3>
+        <a href="?demo=1" class="portal-demo-link">Xem Album Demo mẫu →</a>
+      </div>
+
+      <div id="portal-albums-grid" class="portal-albums-grid"></div>
+
+      <div id="portal-empty-state" class="portal-empty-state hidden">
+        <div class="portal-empty-icon">📷</div>
+        <h4>Không tìm thấy album phù hợp</h4>
+        <p id="portal-empty-msg">Thử tìm bằng tên không dấu, ngày chụp khác hoặc liên hệ Studio để nhận link trực tiếp nhé.</p>
+        <button type="button" id="portal-btn-clear-search" class="btn btn-secondary btn-sm">Hiện tất cả album</button>
       </div>
     </div>
   </section>
@@ -1026,9 +1069,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.5" defer></script>
+  <script src="js/pwa.js?v=10.6" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.5"></script>
+  <script type="module" src="js/app.js?v=10.6"></script>
 </body>
 </html>
