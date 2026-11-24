@@ -474,6 +474,7 @@ export class LightboxModal {
     }
 
     this.syncControls(true);
+    this.renderQualityBadges();
   }
 
   syncControls(syncNoteInput = true) {
@@ -506,8 +507,27 @@ export class LightboxModal {
     }
   }
 
-  renderCollapseState() {
-    if (!this.collapseToggleBtn) return;
+  renderQualityBadges() {
+    const el = this.modalEl?.querySelector('#lb-quality-badges');
+    if (!el) return;
+    const photo = this.currentPhoto();
+    const q = photo ? this.callbacks.getQualityInfo?.(photo.id) : null;
+    if (!q) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+    el.innerHTML = '';
+    const add = (cls, text) => {
+      const b = document.createElement('span');
+      b.className = `q-badge ${cls}`;
+      b.textContent = text;
+      el.appendChild(b);
+    };
+    if (q.isBest) add('q-best', `⭐ Tấm đẹp nhất (nhóm ${q.groupSize} ảnh)`);
+    else if (q.groupId) add('q-dup', `🔁 Ảnh ${q.groupIndex}/${q.groupSize} trong nhóm giống nhau`);
+    if (q.blink) add('q-blink', '😑 AI nghi có người nhắm mắt');
+    if (q.blurry) add('q-blur', '😵 AI nghi ảnh bị mờ / rung máy');
+    el.classList.toggle('hidden', el.children.length === 0);
+  }
+
+  renderCollapseState() {    if (!this.collapseToggleBtn) return;
     this.dockEl.classList.toggle('is-collapsed', this.isDockCollapsed);
     this.collapseToggleBtn.innerHTML = this.isDockCollapsed
       ? `${ICONS.chevronUp}<span>Hiện chọn ảnh</span>`

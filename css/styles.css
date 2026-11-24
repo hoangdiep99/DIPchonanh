@@ -767,6 +767,20 @@ a {
   pointer-events: none;
 }
 
+/* AI quality badges — bottom-left, ABOVE the filename bar so they don't cover action buttons */
+.photo-badges-quality {
+  position: absolute;
+  left: 6px;
+  bottom: 26px; /* sits just above the filename overlay */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  z-index: 3;
+  pointer-events: none;
+  max-width: calc(100% - 12px);
+}
+
 .photo-filename {
   font-size: 11px;
   font-weight: 500;
@@ -4204,5 +4218,22 @@ a {
 .q-badge.q-blink { background: rgba(234, 88, 12, 0.88); }
 .q-badge.q-dup { background: rgba(24, 24, 27, 0.72); }
 .q-badge.q-best { background: rgba(5, 150, 105, 0.9); }
-.photo-badges-left { flex-wrap: wrap; max-width: calc(100% - 110px); }
+.photo-badges-left { flex-wrap: wrap; }
 .photo-card.q-dim .photo-thumb { opacity: 0.55; }
+
+
+/* Quality badges in lightbox — centered strip above the dock */
+.lb-quality-badges {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 14px 4px;
+  pointer-events: none;
+}
+.lb-quality-badges.hidden { display: none; }
+.lb-quality-badges .q-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}

@@ -8,8 +8,8 @@
  *    3. Quét tuần tự theo lô (batchSize=6 ảnh thumbnail w400) để chống lag UI.
  *    4. Tính Cosine Similarity / human.match.similarity, lọc ảnh khớp và lưu cache IndexedDB.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.20';
-import { StorageManager } from './storage.js?v=10.20';
+import { STUDIO_CONFIG } from '../config.js?v=10.21';
+import { StorageManager } from './storage.js?v=10.21';
 
 const PhotoEyeMath = {
   // Eye Aspect Ratio: (|p2-p6| + |p3-p5|) / (2|p1-p4|) — mắt mở ~0.25-0.35, nhắm < 0.18

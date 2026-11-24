@@ -1,15 +1,15 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.20';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.20';
-import { GalleryGrid } from './gallery.js?v=10.20';
-import { LightboxModal } from './lightbox.js?v=10.20';
-import { StorageManager } from './storage.js?v=10.20';
-import { FaceFilterEngine } from './face-filter.js?v=10.20';
-import { ExportService } from './export.js?v=10.20';
-import { AdminManager } from './admin.js?v=10.20';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.20';
+import { STUDIO_CONFIG } from '../config.js?v=10.21';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.21';
+import { GalleryGrid } from './gallery.js?v=10.21';
+import { LightboxModal } from './lightbox.js?v=10.21';
+import { StorageManager } from './storage.js?v=10.21';
+import { FaceFilterEngine } from './face-filter.js?v=10.21';
+import { ExportService } from './export.js?v=10.21';
+import { AdminManager } from './admin.js?v=10.21';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.21';
 
 class AppController {
   constructor() {
@@ -1456,6 +1456,7 @@ class AppController {
         onFindFaceFromPhoto: (photo) => this.startFaceDetectionWithSample(photo),
         onDownloadPhoto: (photo) => this.downloadSinglePhoto(photo),
         showToast: (msg, type) => this.showToast(msg, type),
+        getQualityInfo: (id) => this.getQualityBadgeInfo(id),
       },
     });
   }
