@@ -384,25 +384,79 @@ class AppController {
         const params = new URLSearchParams(window.location.search);
         const shortKey = params.get('k') || params.get('album');
         if (shortKey) {
-          const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
-          if (webhookUrl) {
+          const normKey = shortKey.toLowerCase().trim();
+
+          // 1. Kiểm tra nhanh trong defaultAlbums cấu hình sẵn
+          const defAlbum = (STUDIO_CONFIG.defaultAlbums || []).find(
+            (a) => a.slug && a.slug.toLowerCase().trim() === normKey
+          );
+          if (defAlbum && defAlbum.folderId) {
+            this.folderId = defAlbum.folderId;
+            this.clientName = defAlbum.client || shortKey;
+            this.packageName = defAlbum.pkg || 'Album Tiêu Chuẩn';
+            this.limit = defAlbum.limit || 0;
+            this.allowDownload = defAlbum.download !== 0;
+            this.updateHeaderAlbumInfo();
+          }
+
+          // 2. Kiểm tra trong bộ nhớ admin cục bộ nếu có
+          if (!this.folderId) {
             try {
-              this.stateLoadingMsg.textContent = `Đang tìm album "${shortKey}"...`;
-              const res = await fetch(`${webhookUrl}?action=get_album&slug=${encodeURIComponent(shortKey.toLowerCase().trim())}`);
-              if (res.ok) {
-                const json = await res.json();
-                if (json && json.status === 'success' && json.album && json.album.folderId) {
-                  this.folderId = json.album.folderId;
-                  this.clientName = json.album.client || shortKey;
-                  this.packageName = json.album.pkg || 'Album Tiêu Chuẩn';
-                  this.limit = json.album.limit || 0;
-                  this.allowDownload = json.album.download !== 0;
-                  this.updateHeaderAlbumInfo();
-                  this.registerCurrentAlbumToAdminHistory();
-                }
+              const localHistory = JSON.parse(localStorage.getItem('studio_admin_history')) || [];
+              const matched = localHistory.find((h) => h.slug && h.slug.toLowerCase().trim() === normKey);
+              if (matched && matched.folderId) {
+                this.folderId = matched.folderId;
+                this.clientName = matched.client || shortKey;
+                this.packageName = matched.pkg || 'Album Tiêu Chuẩn';
+                this.limit = matched.limit || 0;
+                this.allowDownload = matched.download !== 0;
+                this.updateHeaderAlbumInfo();
               }
-            } catch (e) {
-              console.warn('Lỗi tra cứu album từ webhook:', e);
+            } catch (e) {}
+          }
+
+          // 3. Nếu chưa thấy, tra cứu đám mây qua Apps Script Webhook
+          if (!this.folderId) {
+            const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+            if (webhookUrl) {
+              try {
+                this.stateLoadingMsg.textContent = `Đang tìm album "${shortKey}"...`;
+                const res = await fetch(`${webhookUrl}?action=get_album&slug=${encodeURIComponent(normKey)}`);
+                if (res.ok) {
+                  const json = await res.json();
+                  if (json && json.status === 'success' && json.album && json.album.folderId) {
+                    this.folderId = json.album.folderId;
+                    this.clientName = json.album.client || shortKey;
+                    this.packageName = json.album.pkg || 'Album Tiêu Chuẩn';
+                    this.limit = json.album.limit || 0;
+                    this.allowDownload = json.album.download !== 0;
+                    this.updateHeaderAlbumInfo();
+                    this.registerCurrentAlbumToAdminHistory();
+                  }
+                }
+
+                // Dự phòng: nếu get_album chưa tìm thấy, thử tra cứu get_admin_history
+                if (!this.folderId) {
+                  const resHist = await fetch(`${webhookUrl}?action=get_admin_history`);
+                  if (resHist.ok) {
+                    const jsonHist = await resHist.json();
+                    if (jsonHist && jsonHist.status === 'success' && Array.isArray(jsonHist.history)) {
+                      const found = jsonHist.history.find((h) => h.slug && h.slug.toLowerCase().trim() === normKey);
+                      if (found && found.folderId) {
+                        this.folderId = found.folderId;
+                        this.clientName = found.client || shortKey;
+                        this.packageName = found.pkg || 'Album Tiêu Chuẩn';
+                        this.limit = found.limit || 0;
+                        this.allowDownload = found.download !== 0;
+                        this.updateHeaderAlbumInfo();
+                        this.registerCurrentAlbumToAdminHistory();
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn('Lỗi tra cứu album từ webhook:', e);
+              }
             }
           }
         }

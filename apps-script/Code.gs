@@ -44,6 +44,21 @@ function doGet(e) {
           album: JSON.parse(raw)
         });
       }
+
+      // Tìm tiếp trong danh sách album admin đã đồng bộ lên Google Drive
+      var historyData = loadCloudAdminHistory();
+      if (Array.isArray(historyData)) {
+        for (var h = 0; h < historyData.length; h++) {
+          var item = historyData[h];
+          if (item && item.slug && item.slug.toLowerCase().trim() === slug) {
+            return jsonResponse({
+              status: 'success',
+              album: item
+            });
+          }
+        }
+      }
+
       return jsonResponse({
         status: 'not_found',
         message: 'Chưa có album cho mã này'
