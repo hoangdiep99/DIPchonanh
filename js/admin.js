@@ -5,9 +5,10 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.21';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.21';
-import { FaceFilterEngine } from './face-filter.js?v=10.21';
+import { STUDIO_CONFIG } from '../config.js?v=10.22';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.22';
+import { FaceFilterEngine } from './face-filter.js?v=10.22';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.22';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -1155,6 +1156,28 @@ export class AdminManager {
       }
 
       // 5. Hiển thị kết quả thành công
+            // Tự động phân tích chất lượng ảnh (mờ, nhắm mắt, trùng lặp) và lưu đám mây
+      try {
+        const qualityAnalyzer = new PhotoQualityAnalyzer(this.faceEngine);
+        const albumKey = folderId || slug || 'local';
+        const rawQuality = await qualityAnalyzer.analyzeAlbum(photos, albumKey, () => {});
+        if (webhookUrl && rawQuality && Object.keys(rawQuality).length > 0) {
+          fetch(webhookUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'save_quality',
+              folderId,
+              slug,
+              quality: rawQuality,
+            }),
+          }).catch(() => {});
+        }
+      } catch (qErr) {
+        console.warn('Lỗi phân tích AI quality trong admin:', qErr);
+      }
+
       this.renderScanSuccess(clusterData, slug);
       this.renderHistory();
       this.isScanning = false;

@@ -1,15 +1,15 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.21';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.21';
-import { GalleryGrid } from './gallery.js?v=10.21';
-import { LightboxModal } from './lightbox.js?v=10.21';
-import { StorageManager } from './storage.js?v=10.21';
-import { FaceFilterEngine } from './face-filter.js?v=10.21';
-import { ExportService } from './export.js?v=10.21';
-import { AdminManager } from './admin.js?v=10.21';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.21';
+import { STUDIO_CONFIG } from '../config.js?v=10.22';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.22';
+import { GalleryGrid } from './gallery.js?v=10.22';
+import { LightboxModal } from './lightbox.js?v=10.22';
+import { StorageManager } from './storage.js?v=10.22';
+import { FaceFilterEngine } from './face-filter.js?v=10.22';
+import { ExportService } from './export.js?v=10.22';
+import { AdminManager } from './admin.js?v=10.22';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.22';
 
 class AppController {
   constructor() {
@@ -904,6 +904,7 @@ class AppController {
 
       this.renderFolderTabs();
       await this.loadCachedClusters();
+      await this.loadCachedQuality();
 
       if (this.initialSelParam) {
         this.applySelectedFromParam(this.initialSelParam);
@@ -2080,6 +2081,8 @@ class AppController {
       this.showFaceStep('clusters');
       this.renderFaceClustersGrid();
       this.showToast(`Phát hiện ${clusters.length} người khác nhau trong album!`, 'success');
+      // Tự động phân tích chất lượng ảnh và đồng bộ lên đám mây khi quét xong người
+      this.startQualityScan().catch(() => {});
     } catch (err) {
       this.isScanningFace = false;
       this.isPausedFace = false;
@@ -2705,6 +2708,7 @@ class AppController {
         this.showToast(`⏸ Đã kiểm tra ${counts.analyzed}/${counts.total} ảnh. Bấm "AI lọc ảnh lỗi" lần nữa để quét tiếp.`);
       } else {
         this.showToast(`✨ Đã kiểm tra xong ${counts.total} ảnh`, 'success');
+        this.syncQualityToCloud();
       }
     } catch (err) {
       console.error('Lỗi AI lọc ảnh lỗi:', err);
@@ -2734,6 +2738,75 @@ class AppController {
     this.qualityStatus.textContent =
       `${c.groups} nhóm ảnh giống nhau • ${c.blink} ảnh nghi nhắm mắt • ${c.blurry} ảnh nghi mờ${partial}`;
     this.setQualityMode(this.qualityMode, false);
+  }
+
+  async syncQualityToCloud() {
+    const albumKey = this.getQualityAlbumKey();
+    const raw = this.qualityAnalyzer.loadCache(albumKey);
+    if (!raw || Object.keys(raw).length === 0) return;
+
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (!webhookUrl) return;
+
+    const slug = this.slug || new URLSearchParams(window.location.search).get('k') || new URLSearchParams(window.location.search).get('album') || '';
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_quality',
+          folderId: this.folderId || '',
+          slug: slug,
+          quality: raw,
+        }),
+      });
+      console.log('☁️ Đã đồng bộ dữ liệu AI lọc ảnh lỗi lên đám mây thành công!');
+    } catch (err) {
+      console.warn('Lỗi đồng bộ AI quality lên đám mây:', err);
+    }
+  }
+
+  async loadCachedQuality() {
+    const albumKey = this.getQualityAlbumKey();
+    let raw = this.qualityAnalyzer.loadCache(albumKey);
+    let loadedFromCloud = false;
+
+    const photoCount = this.allPhotos ? this.allPhotos.length : 0;
+    const localCount = raw ? Object.keys(raw).length : 0;
+
+    if (localCount === 0 || (photoCount > 0 && localCount < photoCount)) {
+      const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+      const slug = this.slug || new URLSearchParams(window.location.search).get('k') || new URLSearchParams(window.location.search).get('album') || '';
+      const folderId = this.folderId || '';
+
+      if (webhookUrl && (slug || folderId)) {
+        try {
+          const syncUrl = `${webhookUrl}${webhookUrl.includes('?') ? '&' : '?'}action=get_quality&slug=${encodeURIComponent(slug)}&folderId=${encodeURIComponent(folderId)}&t=${Date.now()}`;
+          const res = await fetch(syncUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === 'success' && data.quality && Object.keys(data.quality).length > 0) {
+              raw = { ...(raw || {}), ...data.quality };
+              this.qualityAnalyzer.saveCache(albumKey, raw);
+              loadedFromCloud = true;
+              console.log(`☁️ Đã nạp ${Object.keys(data.quality).length} kết quả AI lọc ảnh lỗi tự động từ đám mây!`);
+            }
+          }
+        } catch (e) {
+          // ignore cloud fetch error
+        }
+      }
+    }
+
+    if (raw && Object.keys(raw).length > 0 && this.allPhotos && this.allPhotos.length > 0) {
+      const { info, counts } = this.qualityAnalyzer.summarize(this.allPhotos, raw);
+      this.qualityInfo = info;
+      this.qualityCounts = counts;
+      this.renderQualityCounts();
+      return true;
+    }
+    return loadedFromCloud;
   }
 
   clearFaceFilter() {

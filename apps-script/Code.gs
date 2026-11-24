@@ -86,6 +86,22 @@ function doGet(e) {
       });
     }
 
+    // 0.1b. Phân hệ Đồng Bộ Đánh Giá Chất Lượng AI Đám Mây (?action=get_quality&slug=...)
+    if (action === 'get_quality') {
+      var slugQ = (params.slug || '').toLowerCase().trim();
+      var cloudQuality = loadCloudQuality(slugQ, folderId);
+      if (cloudQuality && typeof cloudQuality === 'object') {
+        return jsonResponse({
+          status: 'success',
+          quality: cloudQuality
+        });
+      }
+      return jsonResponse({
+        status: 'not_found',
+        message: 'Chưa có dữ liệu chất lượng ảnh'
+      });
+    }
+
     // 0.2. Phân hệ Đồng Bộ Danh Sách Album Cho Admin Đa Thiết Bị (?action=get_admin_history)
     if (action === 'get_admin_history') {
       var historyData = loadCloudAdminHistory();
@@ -227,6 +243,17 @@ function doPost(e) {
       if ((slugCluster || folderIdCluster) && Array.isArray(clustersList) && clustersList.length > 0) {
         saveCloudClusters(slugCluster, folderIdCluster, clustersList);
         return jsonResponse({ status: 'success', message: 'Đã lưu cụm khuôn mặt lên đám mây' });
+      }
+    }
+
+    // 0.1b. Phân hệ Lưu Đánh Giá Chất Lượng AI Đám Mây (action=save_quality)
+    if (data.action === 'save_quality') {
+      var slugQuality = (data.slug || '').toLowerCase().trim();
+      var folderIdQuality = data.folderId || '';
+      var qualityMap = data.quality || {};
+      if ((slugQuality || folderIdQuality) && typeof qualityMap === 'object' && Object.keys(qualityMap).length > 0) {
+        saveCloudQuality(slugQuality, folderIdQuality, qualityMap);
+        return jsonResponse({ status: 'success', message: 'Đã lưu chất lượng ảnh AI lên đám mây' });
       }
     }
 
@@ -556,6 +583,50 @@ function loadCloudClusters(slug, folderId) {
     }
   } catch (e) {}
 
+  return null;
+}
+
+/**
+ * Lưu đánh giá chất lượng ảnh AI (mờ, nhắm mắt, giống nhau) lên RAM Cache và file Google Drive
+ */
+function saveCloudQuality(slug, folderId, qualityMap) {
+  var key = 'quality_' + (slug || folderId);
+  var jsonStr = JSON.stringify(qualityMap);
+  putToCache(key, jsonStr, 21600);
+  try {
+    var fileName = '_studio_quality_' + (slug || folderId) + '.json';
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      var f = files.next();
+      f.setContent(jsonStr);
+    } else {
+      DriveApp.createFile(fileName, jsonStr, MimeType.PLAIN_TEXT);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Đọc đánh giá chất lượng ảnh AI từ RAM Cache hoặc Google Drive
+ */
+function loadCloudQuality(slug, folderId) {
+  var key = 'quality_' + (slug || folderId);
+  var cached = getFromCache(key);
+  if (cached) {
+    try {
+      return JSON.parse(cached);
+    } catch (e) {}
+  }
+  try {
+    var fileName = '_studio_quality_' + (slug || folderId) + '.json';
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      var content = files.next().getBlob().getDataAsString();
+      if (content) {
+        putToCache(key, content, 21600);
+        return JSON.parse(content);
+      }
+    }
+  } catch (e) {}
   return null;
 }
 
