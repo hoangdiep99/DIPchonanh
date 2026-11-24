@@ -1901,6 +1901,18 @@ class AppController {
         <span class="people-count">${cluster.photoCount}</span>
       `;
 
+      // Tự động cắt cận cảnh khuôn mặt cho avatar nếu chưa được crop
+      if (cluster.box && cluster.avatarUrl && cluster.avatarUrl.startsWith('http') && this.faceEngine) {
+        this.faceEngine.cropFaceAvatar(cluster.avatarUrl, cluster.box).then((cropped) => {
+          if (cropped && cropped.startsWith('data:')) {
+            cluster.avatarUrl = cropped;
+            const img = chip.querySelector('.people-chip-avatar');
+            if (img) img.src = cropped;
+            this.saveFaceClustersToStorage();
+          }
+        });
+      }
+
       chip.addEventListener('click', () => {
         if (this.selectedClusterId === cluster.id) {
           this.clearFaceFilter();
@@ -1924,9 +1936,35 @@ class AppController {
         <div class="cluster-avatar-wrap">
           <img src="${cluster.avatarUrl}" class="cluster-avatar" alt="${cluster.label}">
         </div>
-        <span class="cluster-label">${cluster.label}</span>
+        <span class="cluster-label" title="Bấm để đổi tên (VD: Cô dâu, Chú rể)">${cluster.label} ✏️</span>
         <span class="cluster-count">${cluster.photoCount} ảnh</span>
       `;
+
+      // Tự động cắt cận cảnh khuôn mặt cho avatar nếu chưa được crop
+      if (cluster.box && cluster.avatarUrl && cluster.avatarUrl.startsWith('http') && this.faceEngine) {
+        this.faceEngine.cropFaceAvatar(cluster.avatarUrl, cluster.box).then((cropped) => {
+          if (cropped && cropped.startsWith('data:')) {
+            cluster.avatarUrl = cropped;
+            const img = card.querySelector('.cluster-avatar');
+            if (img) img.src = cropped;
+            this.saveFaceClustersToStorage();
+          }
+        });
+      }
+
+      // Đổi tên nhân vật (VD: Cô dâu, Chú rể)
+      const labelEl = card.querySelector('.cluster-label');
+      labelEl?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newName = prompt(`Nhập tên mới cho nhóm khuôn mặt này (Ví dụ: Cô dâu, Chú rể...):`, cluster.label.replace(' ✏️', ''));
+        if (newName && newName.trim()) {
+          cluster.label = newName.trim();
+          this.saveFaceClustersToStorage();
+          this.renderFaceClustersGrid();
+          this.renderPeopleBar();
+        }
+      });
+
       card.addEventListener('click', () => {
         this.applyClusterFilter(cluster);
       });

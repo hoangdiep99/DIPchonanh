@@ -133,6 +133,38 @@ export class FaceFilterEngine {
   }
 
   /**
+   * Cắt ảnh đại diện cận cảnh khuôn mặt (Face Crop) từ ảnh gốc theo bounding box
+   */
+  async cropFaceAvatar(photoUrl, box, size = 160) {
+    if (!box || !photoUrl) return photoUrl;
+    try {
+      const img = await this.loadImageElement(photoUrl);
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      const [x, y, w, h] = Array.isArray(box) ? box : [box.x, box.y, box.width, box.height];
+      if (!w || !h) return photoUrl;
+
+      // Thêm lề 30% xung quanh khuôn mặt để hiển thị tự nhiên (như Google/Apple Photos)
+      const marginX = w * 0.3;
+      const marginY = h * 0.35;
+
+      const cropX = Math.max(0, x - marginX);
+      const cropY = Math.max(0, y - marginY);
+      const cropW = Math.min(img.naturalWidth - cropX, w + marginX * 2);
+      const cropH = Math.min(img.naturalHeight - cropY, h + marginY * 2);
+
+      ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, size, size);
+      return canvas.toDataURL('image/jpeg', 0.88);
+    } catch (e) {
+      console.warn('Không thể crop avatar khuôn mặt:', e);
+      return photoUrl;
+    }
+  }
+
+  /**
    * Phát hiện các khuôn mặt trong 1 bức ảnh (kèm box và embedding)
    */
   async detectFacesInImage(imgSource) {
@@ -526,11 +558,33 @@ export class FaceFilterEngine {
       // Sắp xếp các cụm người theo số lượng ảnh xuất hiện nhiều nhất lên đầu
       clusters.sort((a, b) => b.photoIds.size - a.photoIds.size);
 
-      // Cập nhật lại nhãn sau khi sắp xếp
-      clusters.forEach((c, idx) => {
+      // Cập nhật lại nhãn sau khi sắp xếp & Cắt cận cảnh khuôn mặt làm avatar đại diện
+      for (let idx = 0; idx < clusters.length; idx++) {
+        const c = clusters[idx];
         c.label = `Người ${idx + 1}`;
         c.photoCount = c.photoIds.size;
-      });
+
+        if (c.members && c.members.length > 0) {
+          let bestMember = c.members[0];
+          let maxArea = 0;
+          for (const m of c.members) {
+            if (m.box) {
+              const [w, h] = Array.isArray(m.box) ? [m.box[2], m.box[3]] : [m.box.width, m.box.height];
+              const area = (w || 0) * (h || 0);
+              if (area > maxArea) {
+                maxArea = area;
+                bestMember = m;
+              }
+            }
+          }
+          if (bestMember && bestMember.box && bestMember.photo && bestMember.photo.aiUrl) {
+            try {
+              c.avatarUrl = await this.cropFaceAvatar(bestMember.photo.aiUrl, bestMember.box, 160);
+              c.box = bestMember.box;
+            } catch (e) {}
+          }
+        }
+      }
 
       safeProgress({
         phase: 'done',
