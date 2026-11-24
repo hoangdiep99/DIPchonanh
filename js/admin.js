@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=9.9';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=9.9';
-import { FaceFilterEngine } from './face-filter.js?v=9.9';
+import { STUDIO_CONFIG } from '../config.js?v=10.1';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.1';
+import { FaceFilterEngine } from './face-filter.js?v=10.1';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_REMEMBER_KEY = 'studio_admin_remember';
