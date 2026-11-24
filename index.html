@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.15">
+  <link rel="stylesheet" href="css/styles.css?v=10.16">
 </head>
 <body>
 
@@ -745,7 +745,11 @@
       <button type="button" id="btn-quick-admin-login" class="btn btn-secondary" style="width:100%;margin-top:10px;">
         ⚡ Mở nhanh quyền Studio (1-Chạm máy cá nhân)
       </button>
-      <div style="margin-top:16px;">
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;align-items:center;">
+        <button type="button" id="btn-forgot-admin-pass" class="btn btn-ghost btn-sm" style="font-size:12.5px;color:#0284c7;font-weight:600;">
+          ✈️ Quên mật khẩu? Gửi về Telegram chủ Studio
+        </button>
+        <div id="forgot-pass-msg" class="hidden" style="font-size:12px;text-align:center;padding:6px 10px;border-radius:8px;width:100%;box-sizing:border-box;"></div>
         <a href="#" class="btn btn-ghost btn-sm" style="font-size:12px;">← Quay lại trang chọn ảnh</a>
       </div>
     </div>
@@ -1182,9 +1186,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.15" defer></script>
+  <script src="js/pwa.js?v=10.16" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.15"></script>
+  <script type="module" src="js/app.js?v=10.16"></script>
 </body>
 </html>

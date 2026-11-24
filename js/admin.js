@@ -5,9 +5,9 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.15';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.15';
-import { FaceFilterEngine } from './face-filter.js?v=10.15';
+import { STUDIO_CONFIG } from '../config.js?v=10.16';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.16';
+import { FaceFilterEngine } from './face-filter.js?v=10.16';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -333,6 +333,8 @@ export class AdminManager {
     this.passwordInput = this.container.querySelector('#login-password');
     this.rememberCheckbox = this.container.querySelector('#login-remember-me');
     this.btnQuickLogin = this.container.querySelector('#btn-quick-admin-login');
+    this.btnForgotPass = this.container.querySelector('#btn-forgot-admin-pass');
+    this.forgotPassMsg = this.container.querySelector('#forgot-pass-msg');
     this.loginErrorMsg = this.container.querySelector('#login-error-msg');
     this.btnLogout = this.container.querySelector('#admin-btn-logout');
     this.btnChangePass = this.container.querySelector('#admin-btn-change-pass');
@@ -359,6 +361,10 @@ export class AdminManager {
 
     this.btnChangePass?.addEventListener('click', () => {
       this.handleChangePassword();
+    });
+
+    this.btnForgotPass?.addEventListener('click', () => {
+      this.handleForgotPassword();
     });
   }
 
@@ -511,6 +517,59 @@ export class AdminManager {
     } catch (err) {
       console.error('Lỗi đổi mật khẩu:', err);
       alert('⚠️ Lỗi kết nối máy chủ Google khi đổi mật khẩu. Vui lòng thử lại!');
+    }
+  }
+
+  async handleForgotPassword() {
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl || localStorage.getItem('studio_apps_script_url');
+    if (!webhookUrl) {
+      alert('Chưa cấu hình Google Apps Script Webhook!');
+      return;
+    }
+
+    const originalText = this.btnForgotPass ? this.btnForgotPass.textContent : '';
+    if (this.btnForgotPass) {
+      this.btnForgotPass.disabled = true;
+      this.btnForgotPass.textContent = '⏳ Đang gửi về Telegram...';
+    }
+    if (this.forgotPassMsg) {
+      this.forgotPassMsg.classList.add('hidden');
+    }
+
+    try {
+      const resp = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'admin_forgot_pass' }),
+      });
+      const json = await resp.json();
+      if (this.forgotPassMsg) {
+        this.forgotPassMsg.classList.remove('hidden');
+        if (json && json.status === 'success' && json.message) {
+          this.forgotPassMsg.style.background = '#dcfce7';
+          this.forgotPassMsg.style.color = '#15803d';
+          this.forgotPassMsg.textContent = json.message;
+        } else {
+          this.forgotPassMsg.style.background = '#fee2e2';
+          this.forgotPassMsg.style.color = '#b91c1c';
+          this.forgotPassMsg.textContent =
+            json?.message ||
+            'Google Apps Script chưa cập nhật Code.gs mới. Vui lòng dán Code.gs mới và Triển khai lại!';
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi gửi quên mật khẩu:', err);
+      if (this.forgotPassMsg) {
+        this.forgotPassMsg.classList.remove('hidden');
+        this.forgotPassMsg.style.background = '#fee2e2';
+        this.forgotPassMsg.style.color = '#b91c1c';
+        this.forgotPassMsg.textContent = 'Không thể kết nối máy chủ Google. Vui lòng thử lại!';
+      }
+    } finally {
+      if (this.btnForgotPass) {
+        this.btnForgotPass.disabled = false;
+        this.btnForgotPass.textContent = originalText || '✈️ Quên mật khẩu? Gửi về Telegram chủ Studio';
+      }
     }
   }
 

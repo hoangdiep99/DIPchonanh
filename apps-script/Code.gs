@@ -20,7 +20,7 @@
 const SPREADSHEET_ID = '';
 
 // Tùy chọn gửi thông báo Telegram (Đã được triển khai an toàn trong dự án Apps Script online của bạn)
-const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
+const TELEGRAM_BOT_TOKEN = '9098776159:AAF72tSIcJf5xgvRLnvULywnjNQyq3UhQTI';
 const TELEGRAM_CHAT_ID = '2062937107';
 
 // Tài khoản & Mật khẩu Admin mặc định (Lưu bí mật trên máy chủ Google, người ngoài không thể xem)
@@ -268,6 +268,49 @@ function doPost(e) {
       }
       propsAuth.setProperty('studio_admin_pass', newPass);
       return jsonResponse({ status: 'success', message: 'Đã đổi mật khẩu Studio trên Đám mây thành công!' });
+    }
+
+    // 0.5. Phân hệ Quên Mật Khẩu -> Gửi mật khẩu hiện tại về riêng Telegram chủ Studio (action=admin_forgot_pass)
+    if (data.action === 'admin_forgot_pass') {
+      if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'YOUR_TELEGRAM_BOT_TOKEN' || !TELEGRAM_CHAT_ID) {
+        return jsonResponse({
+          status: 'error',
+          message: 'Chưa cấu hình TELEGRAM_BOT_TOKEN trong Code.gs! Bạn có thể xem mật khẩu trong Cài đặt dự án (⚙️) > Thuộc tính tập lệnh.'
+        });
+      }
+      var propsForgot = PropertiesService.getScriptProperties();
+      var curUser = propsForgot.getProperty('studio_admin_user') || DEFAULT_ADMIN_USER;
+      var curPass = propsForgot.getProperty('studio_admin_pass') || DEFAULT_ADMIN_PASS;
+      var nowStr = Utilities.formatDate(new Date(), 'GMT+7', 'HH:mm:ss dd/MM/yyyy');
+      var tgText =
+        '🔐 *KHÔI PHỤC MẬT KHẨU ADMIN — DIPchonanh*\n' +
+        '━━━━━━━━━━━━━━━━━━\n' +
+        '👤 Tài khoản: `' + curUser + '`\n' +
+        '🔑 Mật khẩu hiện tại: `' + curPass + '`\n' +
+        '🕒 Thời gian yêu cầu: ' + nowStr + '\n' +
+        '━━━━━━━━━━━━━━━━━━\n' +
+        '⚠️ Nếu không phải bạn yêu cầu, hãy đăng nhập và đổi mật khẩu ngay.';
+
+      try {
+        var tgUrl = 'https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage';
+        var tgRes = UrlFetchApp.fetch(tgUrl, {
+          method: 'post',
+          contentType: 'application/json',
+          muteHttpExceptions: true,
+          payload: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: tgText,
+            parse_mode: 'Markdown'
+          })
+        });
+        var tgJson = JSON.parse(tgRes.getContentText() || '{}');
+        if (tgJson && tgJson.ok) {
+          return jsonResponse({ status: 'success', message: '✅ Đã gửi mật khẩu về Telegram của chủ Studio!' });
+        }
+        return jsonResponse({ status: 'error', message: 'Telegram từ chối gửi tin: ' + (tgJson.description || 'Kiểm tra lại TELEGRAM_BOT_TOKEN') });
+      } catch (tgErr) {
+        return jsonResponse({ status: 'error', message: 'Lỗi gửi Telegram: ' + tgErr.toString() });
+      }
     }
 
     // 1. Phân hệ Lưu Nháp Đa Thiết Bị lên đám mây
