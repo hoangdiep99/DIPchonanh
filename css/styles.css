@@ -4606,30 +4606,74 @@ a {
   display: none;
 }
 @media (max-width: 640px) {
+  .admin-view {
+    padding: 10px 10px 24px !important;
+  }
   .admin-header {
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 10px !important;
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+  }
+  .admin-header h2 {
+    font-size: 17px !important;
+  }
+  .admin-header p {
+    font-size: 11.5px !important;
+    margin-top: 2px !important;
   }
   .admin-header-actions {
     width: 100% !important;
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 6px !important;
+    gap: 5px !important;
     justify-content: flex-start !important;
   }
   .admin-header-actions .btn {
-    padding: 6px 10px !important;
-    font-size: 12px !important;
+    padding: 5px 8px !important;
+    font-size: 11.5px !important;
   }
+
+  /* 4 ô thống kê thu gọn thành 1 hàng ngang 4 cột nhỏ gọn */
+  .admin-stats-bar {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+    margin-bottom: 10px !important;
+  }
+  .admin-stat-card {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 8px 4px !important;
+    gap: 3px !important;
+    border-radius: 10px !important;
+  }
+  .admin-stat-icon {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 14px !important;
+  }
+  .admin-stat-val {
+    font-size: 14px !important;
+    line-height: 1.15 !important;
+  }
+  #admin-stat-cloud {
+    font-size: 11px !important;
+  }
+  .admin-stat-label {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+
   .admin-mobile-toggle-form {
     display: flex !important;
     width: 100%;
     justify-content: center;
-    padding: 11px 14px;
-    font-size: 14px;
+    padding: 9px 12px;
+    font-size: 13px;
     font-weight: 700;
-    border-radius: 12px;
+    border-radius: 10px;
     margin-bottom: 10px;
   }
   #admin-form-card {
