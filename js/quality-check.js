@@ -7,8 +7,8 @@
  *     gom thành nhóm và gợi ý tấm đẹp nhất mỗi nhóm.
  * Kết quả được lưu localStorage theo từng album để lần sau mở ra là có ngay.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.28';
-import { StorageManager } from './storage.js?v=10.28';
+import { STUDIO_CONFIG } from '../config.js?v=10.29';
+import { StorageManager } from './storage.js?v=10.29';
 
 const CACHE_PREFIX = 'dip_quality_v1_';
 
