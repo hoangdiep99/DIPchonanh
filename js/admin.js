@@ -5,11 +5,11 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.42';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.42';
-import { FaceFilterEngine } from './face-filter.js?v=10.42';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.42';
-import { getAlbumViewStats } from './analytics.js?v=10.42';
+import { STUDIO_CONFIG } from '../config.js?v=10.43';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.43';
+import { FaceFilterEngine } from './face-filter.js?v=10.43';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.43';
+import { getAlbumViewStats } from './analytics.js?v=10.43';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
