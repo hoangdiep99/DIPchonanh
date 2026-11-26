@@ -5,11 +5,11 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.43';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.43';
-import { FaceFilterEngine } from './face-filter.js?v=10.43';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.43';
-import { getAlbumViewStats } from './analytics.js?v=10.43';
+import { STUDIO_CONFIG } from '../config.js?v=10.44';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.44';
+import { FaceFilterEngine } from './face-filter.js?v=10.44';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.44';
+import { getAlbumViewStats } from './analytics.js?v=10.44';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -377,6 +377,15 @@ export class AdminManager {
 
     this.btnChangePass?.addEventListener('click', () => {
       this.handleChangePassword();
+    });
+
+    const togglePassBtn = document.getElementById('btn-toggle-login-pass');
+    togglePassBtn?.addEventListener('click', () => {
+      if (!this.passwordInput) return;
+      const show = this.passwordInput.type === 'password';
+      this.passwordInput.type = show ? 'text' : 'password';
+      togglePassBtn.textContent = show ? '🙈' : '👁️';
+      togglePassBtn.title = show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu';
     });
 
     this.btnForgotPass?.addEventListener('click', () => {
