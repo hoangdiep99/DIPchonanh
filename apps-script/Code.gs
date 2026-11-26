@@ -87,6 +87,25 @@ function doGet(e) {
     }
 
     // 0.1b. Phân hệ Đồng Bộ Đánh Giá Chất Lượng AI Đám Mây (?action=get_quality&slug=...)
+
+    // Lấy ảnh bìa album từ cloud (?action=get_cover&slug=...&folderId=...)
+    if (action === 'get_cover') {
+      var coverSlug = (params.slug || folderId || '').toLowerCase().trim();
+      var coverData = loadCloudCover(coverSlug);
+      if (coverData) {
+        return jsonResponse({ status: 'success', cover: coverData });
+      }
+      return jsonResponse({ status: 'not_found', cover: null });
+    }
+
+    // Lấy thống kê lượt xem album (?action=get_views&slug=...&folderId=...)
+    if (action === 'get_views') {
+      var viewSlug = (params.slug || folderId || '').toLowerCase().trim();
+      var viewLog = loadViewLog(viewSlug);
+      var stats = computeViewStats(viewLog);
+      return jsonResponse({ status: 'success', stats: stats });
+    }
+
     if (action === 'get_quality') {
       var slugQ = (params.slug || '').toLowerCase().trim();
       var cloudQuality = loadCloudQuality(slugQ, folderId);
@@ -247,6 +266,42 @@ function doPost(e) {
     }
 
     // 0.1b. Phân hệ Lưu Đánh Giá Chất Lượng AI Đám Mây (action=save_quality)
+
+    // Lưu ảnh bìa album lên cloud (action=save_cover)
+    if (data.action === 'save_cover') {
+      var coverSlug2 = (data.slug || data.folderId || '').toLowerCase().trim();
+      if (coverSlug2) {
+        saveCloudCover(coverSlug2, {
+          coverUrl: data.coverUrl || '',
+          coverId: data.coverId || '',
+          folderId: data.folderId || '',
+          updatedAt: new Date().toISOString()
+        });
+      }
+      return jsonResponse({ status: 'ok' });
+    }
+
+    // Ghi nhận lượt xem album (action=track_view)
+    if (data.action === 'track_view') {
+      var trackSlug = (data.slug || data.folderId || '').toLowerCase().trim();
+      if (trackSlug) {
+        var log = loadViewLog(trackSlug);
+        log.visits = log.visits || [];
+        log.visits.push({
+          ts: data.timestamp || new Date().toISOString(),
+          visitorId: data.visitorId || '',
+          device: data.device || 'PC',
+          folderId: data.folderId || ''
+        });
+        // Giữ tối đa 500 lượt gần nhất
+        if (log.visits.length > 500) {
+          log.visits = log.visits.slice(log.visits.length - 500);
+        }
+        saveViewLog(trackSlug, log);
+      }
+      return jsonResponse({ status: 'ok' });
+    }
+
     if (data.action === 'save_quality') {
       var slugQuality = (data.slug || '').toLowerCase().trim();
       var folderIdQuality = data.folderId || '';
@@ -738,5 +793,107 @@ function sendTelegram(data) {
     }),
     muteHttpExceptions: true
   });
+}
+
+// ============================================================
+// Helper: Ảnh bìa album (save/load)
+// ============================================================
+
+/**
+ * Lưu ảnh bìa album lên Google Drive
+ */
+function saveCloudCover(slug, coverData) {
+  try {
+    var fileName = '_studio_cover_' + slug + '.json';
+    var jsonStr = JSON.stringify(coverData);
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      files.next().setContent(jsonStr);
+    } else {
+      DriveApp.createFile(fileName, jsonStr, MimeType.PLAIN_TEXT);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Đọc ảnh bìa album từ Google Drive
+ */
+function loadCloudCover(slug) {
+  try {
+    var fileName = '_studio_cover_' + slug + '.json';
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      var content = files.next().getBlob().getDataAsString();
+      if (content) return JSON.parse(content);
+    }
+  } catch (e) {}
+  return null;
+}
+
+// ============================================================
+// Helper: Theo dõi lượt xem album (save/load/compute)
+// ============================================================
+
+/**
+ * Lưu log lượt xem lên Google Drive
+ */
+function saveViewLog(slug, log) {
+  try {
+    var fileName = '_studio_views_' + slug + '.json';
+    var jsonStr = JSON.stringify(log);
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      files.next().setContent(jsonStr);
+    } else {
+      DriveApp.createFile(fileName, jsonStr, MimeType.PLAIN_TEXT);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Đọc log lượt xem từ Google Drive
+ */
+function loadViewLog(slug) {
+  try {
+    var fileName = '_studio_views_' + slug + '.json';
+    var files = DriveApp.getFilesByName(fileName);
+    if (files.hasNext()) {
+      var content = files.next().getBlob().getDataAsString();
+      if (content) return JSON.parse(content);
+    }
+  } catch (e) {}
+  return { visits: [] };
+}
+
+/**
+ * Tính thống kê từ log lượt xem
+ * @returns {{totalViews, uniqueVisitors, lastViewedAt, lastDevice, dailyViews}}
+ */
+function computeViewStats(log) {
+  var visits = (log && log.visits) ? log.visits : [];
+  var totalViews = visits.length;
+  var visitorSet = {};
+  var lastVisit = null;
+  var dailyMap = {};
+
+  for (var i = 0; i < visits.length; i++) {
+    var v = visits[i];
+    if (v.visitorId) visitorSet[v.visitorId] = true;
+    if (!lastVisit || v.ts > lastVisit.ts) lastVisit = v;
+    var day = (v.ts || '').slice(0, 10); // YYYY-MM-DD
+    if (day) dailyMap[day] = (dailyMap[day] || 0) + 1;
+  }
+
+  var dailyViews = Object.keys(dailyMap).sort().map(function(d) {
+    return { date: d, count: dailyMap[d] };
+  });
+
+  return {
+    totalViews: totalViews,
+    uniqueVisitors: Object.keys(visitorSet).length,
+    lastViewedAt: lastVisit ? lastVisit.ts : null,
+    lastDevice: lastVisit ? lastVisit.device : null,
+    dailyViews: dailyViews
+  };
 }
 

@@ -1,15 +1,16 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.24';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.24';
-import { GalleryGrid } from './gallery.js?v=10.24';
-import { LightboxModal } from './lightbox.js?v=10.24';
-import { StorageManager } from './storage.js?v=10.24';
-import { FaceFilterEngine } from './face-filter.js?v=10.24';
-import { ExportService } from './export.js?v=10.24';
-import { AdminManager } from './admin.js?v=10.24';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.24';
+import { STUDIO_CONFIG } from '../config.js?v=10.25';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.25';
+import { GalleryGrid } from './gallery.js?v=10.25';
+import { LightboxModal } from './lightbox.js?v=10.25';
+import { StorageManager } from './storage.js?v=10.25';
+import { FaceFilterEngine } from './face-filter.js?v=10.25';
+import { ExportService } from './export.js?v=10.25';
+import { AdminManager } from './admin.js?v=10.25';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.25';
+import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.25';
 
 class AppController {
   constructor() {
@@ -50,6 +51,7 @@ class AppController {
     this.lastLocalActionTime = 0;
     this.lastCloudUpdatedAt = 0;
     this.quickToggleMode = false;
+    this.coverUrl = null; // URL ảnh bìa album hiện tại
 
     this.init();
   }
@@ -893,7 +895,7 @@ class AppController {
       this.folders = data.folders || [];
       this.resetQualityState();
 
-      if (this.folderId && this.allPhotos.length > 0) {
+      if (this.folderId && this.allPhotos.length > 0 && !localStorage.getItem('studio_cover_' + this.folderId)) {
         this.saveCachedAlbumCover(this.folderId, this.allPhotos[0], this.allPhotos.length);
       }
 
@@ -905,6 +907,7 @@ class AppController {
       this.renderFolderTabs();
       await this.loadCachedClusters();
       await this.loadCachedQuality();
+    await this.loadCachedCover();
 
       if (this.initialSelParam) {
         this.applySelectedFromParam(this.initialSelParam);
@@ -913,6 +916,15 @@ class AppController {
       this.showState('gallery');
       this.applyFilters();
       this.updateCounters();
+
+      // Theo dõi lượt xem album (fire-and-forget, không tính khi admin tự mở)
+      if (!this.isDemo && this.folderId && !this.isStudioOwner()) {
+        trackAlbumView(
+          STUDIO_CONFIG.googleSheetsWebhookUrl,
+          this.folderId,
+          this.albumSlug || this.folderId
+        );
+      }
 
       if (data.isFromCache) {
         this.showToast('⚡ Đã mở album tức thì từ bộ nhớ đệm');
@@ -1456,6 +1468,8 @@ class AppController {
         onUpdateNote: (id, text) => this.updateNote(id, text),
         onFindFaceFromPhoto: (photo) => this.startFaceDetectionWithSample(photo),
         onDownloadPhoto: (photo) => this.downloadSinglePhoto(photo),
+        isStudioOwner: () => this.isStudioOwner(),
+        onSetCover: (photo) => this.setCoverPhoto(photo),
         showToast: (msg, type) => this.showToast(msg, type),
         getQualityInfo: (id) => this.getQualityBadgeInfo(id),
       },
@@ -3395,6 +3409,15 @@ class AppController {
       }
     });
 
+    this.ctxBtnSetCover = document.getElementById('ctx-btn-set-cover');
+    this.ctxBtnSetCover?.addEventListener('click', () => {
+      if (this.activeContextPhoto) {
+        const p = this.activeContextPhoto;
+        closeMenu();
+        this.setCoverPhoto(p);
+      }
+    });
+
     document.getElementById('ctx-btn-share-photos')?.addEventListener('click', () => {
       if (this.activeContextPhoto) {
         const p = this.activeContextPhoto;
@@ -3427,6 +3450,10 @@ class AppController {
     }
     if (this.ctxStarIcon) {
       this.ctxStarIcon.textContent = sel.priority ? '⭐' : '☆';
+    }
+
+    if (this.ctxBtnSetCover) {
+      this.ctxBtnSetCover.classList.toggle('hidden', !this.isStudioOwner());
     }
 
     this.contextMenu.classList.remove('hidden');

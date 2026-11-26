@@ -5,10 +5,11 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.24';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.24';
-import { FaceFilterEngine } from './face-filter.js?v=10.24';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.24';
+import { STUDIO_CONFIG } from '../config.js?v=10.25';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.25';
+import { FaceFilterEngine } from './face-filter.js?v=10.25';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.25';
+import { getAlbumViewStats } from './analytics.js?v=10.25';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -1358,6 +1359,7 @@ export class AdminManager {
             <div style="font-size:11px;color:var(--ink-muted);margin-top:4px;font-family:monospace;">
               ${slugDisplay ? `<span style="color:var(--accent-success);font-weight:600;">${slugDisplay}</span> • ` : ''}ID: ${item.folderId.substring(0, 14)}... • 📅 ${item.time}
             </div>
+            <div class="history-item-views" data-views-for="${item.folderId}" style="font-size:11.5px;color:#0f766e;margin-top:4px;font-weight:500;display:none;"></div>
           </div>
         </div>
 
@@ -1459,6 +1461,55 @@ export class AdminManager {
     });
 
     this.updateAdminStats();
+    this.loadHistoryViewStats(list);
+  }
+
+  formatRelativeViewTime(isoStr) {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      const isSameDay =
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate();
+      if (isSameDay) return `Hôm nay ${timeStr}`;
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday =
+        d.getFullYear() === yesterday.getFullYear() &&
+        d.getMonth() === yesterday.getMonth() &&
+        d.getDate() === yesterday.getDate();
+      if (isYesterday) return `Hôm qua ${timeStr}`;
+      return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${timeStr}`;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  async loadHistoryViewStats(list) {
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl;
+    if (!webhookUrl || !Array.isArray(list) || list.length === 0) return;
+
+    const items = list.slice(0, 15);
+    await Promise.all(
+      items.map(async (item) => {
+        if (!item || !item.folderId) return;
+        const stats = await getAlbumViewStats(webhookUrl, item.slug || item.folderId, item.folderId);
+        if (!stats || !stats.totalViews) return;
+        const el = this.historyListEl?.querySelector(`.history-item-views[data-views-for="${item.folderId}"]`);
+        if (!el) return;
+        const lastTime = this.formatRelativeViewTime(stats.lastViewedAt);
+        const deviceText = stats.lastDevice ? ` (${stats.lastDevice})` : '';
+        const guestText = stats.uniqueVisitors ? ` • ${stats.uniqueVisitors} khách` : '';
+        const lastText = lastTime ? ` • Xem gần nhất: ${lastTime}${deviceText}` : '';
+        el.textContent = `👁️ ${stats.totalViews} lượt xem${guestText}${lastText}`;
+        el.style.display = 'block';
+      })
+    );
   }
 
   updateAdminStats() {

@@ -65,6 +65,7 @@ export class LightboxModal {
     this.heartBtn = this.modalEl.querySelector('#lb-heart-btn');
     this.starBtn = this.modalEl.querySelector('#lb-star-btn');
     this.faceBtn = this.modalEl.querySelector('#lb-face-btn');
+    this.coverBtn = this.modalEl.querySelector('#lb-cover-btn');
     this.noteToggleBtn = this.modalEl.querySelector('#lb-note-toggle-btn');
     this.notesDrawer = this.modalEl.querySelector('#lb-notes-drawer');
     this.notesCloseBtn = this.modalEl.querySelector('#lb-notes-close');
@@ -488,6 +489,11 @@ export class LightboxModal {
     }</span>`;
 
     this.starBtn.classList.toggle('is-active', Boolean(sel.priority));
+
+    if (this.coverBtn) {
+      const isOwner = Boolean(this.callbacks.isStudioOwner?.());
+      this.coverBtn.classList.toggle('hidden', !isOwner);
+    }
     this.starBtn.innerHTML = `${ICONS.star(Boolean(sel.priority))}<span>${
       sel.priority ? 'Ưu tiên / In' : 'Ưu tiên'
     }</span>`;

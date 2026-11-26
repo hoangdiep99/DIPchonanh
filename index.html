@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.24">
+  <link rel="stylesheet" href="css/styles.css?v=10.25">
 </head>
 <body>
 
@@ -87,6 +87,17 @@
       </div>
     </div>
   </header>
+
+
+  <!-- Album Cover Banner (ảnh bìa, hiển thị khi có cover) -->
+  <div id="album-cover-banner" class="album-cover-banner hidden">
+    <img id="album-cover-img" class="album-cover-img" src="" alt="Ảnh bìa album" loading="lazy">
+    <div class="album-cover-overlay">
+      <button type="button" id="btn-change-cover" class="btn-change-cover hidden" title="Đổi ảnh bìa album">
+        🖼️ <span>Đổi ảnh bìa</span>
+      </button>
+    </div>
+  </div>
 
   <!-- Thanh Dán Link Google Drive (Ẩn mặc định để giao diện tinh gọn, tạo link trong #admin) -->
   <section id="drive-quick-bar" class="drive-quick-bar hidden">
@@ -358,6 +369,10 @@
           <button type="button" id="lb-face-btn" class="lb-pill-btn btn-face" title="Tìm người trong ảnh này">
             <span class="lb-pill-icon">👤</span>
             <span class="lb-pill-text">Tìm mặt</span>
+          </button>
+          <button type="button" id="lb-cover-btn" class="lb-pill-btn btn-cover hidden" title="Đặt ảnh này làm bìa album">
+            <span class="lb-pill-icon">🖼️</span>
+            <span class="lb-pill-text">Đặt bìa</span>
           </button>
         </div>
       </div>
@@ -1186,6 +1201,10 @@
           <span class="ctx-btn-icon">📲</span>
           <span class="ctx-btn-text">Lưu vào Thư viện Ảnh (iPhone)</span>
         </button>
+        <button type="button" class="context-menu-btn hidden" id="ctx-btn-set-cover">
+          <span class="ctx-btn-icon">🖼️</span>
+          <span class="ctx-btn-text">Đặt làm ảnh bìa Album</span>
+        </button>
       </div>
     </div>
   </div>
@@ -1221,9 +1240,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.24" defer></script>
+  <script src="js/pwa.js?v=10.25" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.24"></script>
+  <script type="module" src="js/app.js?v=10.25"></script>
 </body>
 </html>
