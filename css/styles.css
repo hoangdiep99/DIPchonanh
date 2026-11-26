@@ -4593,3 +4593,49 @@ a {
     gap: 4px !important;
   }
 }
+
+
+/* Lightbox touch-action + Admin Mobile Layout (v10.32) */
+.lightbox-stage {
+  touch-action: none;
+}
+.lightbox-img-container {
+  will-change: transform, opacity;
+}
+.admin-mobile-toggle-form {
+  display: none;
+}
+@media (max-width: 640px) {
+  .admin-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .admin-header-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-start !important;
+  }
+  .admin-header-actions .btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+  .admin-mobile-toggle-form {
+    display: flex !important;
+    width: 100%;
+    justify-content: center;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+  #admin-form-card {
+    display: none;
+  }
+  #admin-form-card.is-open-mobile {
+    display: block;
+  }
+}

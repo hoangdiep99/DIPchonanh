@@ -5,11 +5,11 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.31';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.31';
-import { FaceFilterEngine } from './face-filter.js?v=10.31';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.31';
-import { getAlbumViewStats } from './analytics.js?v=10.31';
+import { STUDIO_CONFIG } from '../config.js?v=10.32';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.32';
+import { FaceFilterEngine } from './face-filter.js?v=10.32';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.32';
+import { getAlbumViewStats } from './analytics.js?v=10.32';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -39,6 +39,16 @@ export class AdminManager {
     this.bindAuthElements();
     this.bindElements();
     this.bindEvents();
+
+    // Nút bật/tắt form Tạo link mới trên điện thoại
+    this.mobileToggleFormBtn = document.getElementById('admin-mobile-toggle-form');
+    this.adminFormCard = document.getElementById('admin-form-card');
+    if (this.mobileToggleFormBtn && this.adminFormCard) {
+      this.mobileToggleFormBtn.addEventListener('click', () => {
+        const isOpen = this.adminFormCard.classList.toggle('is-open-mobile');
+        this.mobileToggleFormBtn.textContent = isOpen ? '✕ Thu gọn bảng tạo link' : '➕ Tạo link album mới';
+      });
+    }
     this.checkAuthState();
   }
 

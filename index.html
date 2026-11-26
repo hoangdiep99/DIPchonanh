@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.31">
+  <link rel="stylesheet" href="css/styles.css?v=10.32">
 </head>
 <body>
 
@@ -874,11 +874,11 @@
             Tạo link chọn ảnh, chọn ảnh bìa album &amp; đồng bộ đám mây đa thiết bị
           </p>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="admin-header-actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <a href="./" class="btn btn-ghost btn-sm" title="Mở Trang chủ tra cứu album của khách">🏠 Trang chủ</a>
           <button type="button" id="admin-btn-change-pass" class="btn btn-ghost btn-sm" title="Đổi mã PIN / Mật khẩu">🔑 Đổi mật khẩu</button>
           <a href="#" id="admin-btn-back-to-gallery" class="btn btn-secondary btn-sm">← Xem album ảnh</a>
-          <button type="button" id="admin-btn-logout" class="btn btn-ghost btn-sm" title="Đăng xuất quản trị">Đăng xuất</button>
+          <button type="button" id="admin-btn-logout" class="btn btn-ghost btn-sm" title="Đăng xuất quản trị">🚪 Đăng xuất</button>
         </div>
       </div>
 
@@ -913,10 +913,12 @@
           </div>
         </div>
       </div>
-
     <div class="admin-grid">
+      <button type="button" id="admin-mobile-toggle-form" class="btn btn-primary admin-mobile-toggle-form">
+        ➕ Tạo link album mới
+      </button>
       <!-- Biểu mẫu nhập liệu -->
-      <div class="panel-card">
+      <div class="panel-card" id="admin-form-card">
         <!-- Banner thông báo khi đang trong chế độ Chỉnh sửa link có sẵn -->
         <div id="admin-editing-banner" class="editing-banner hidden">
           <span>✏️ Đang chỉnh sửa link: <strong id="admin-editing-name">Khách</strong></span>
@@ -1301,9 +1303,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.31" defer></script>
+  <script src="js/pwa.js?v=10.32" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.31"></script>
+  <script type="module" src="js/app.js?v=10.32"></script>
 </body>
 </html>

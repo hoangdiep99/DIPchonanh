@@ -291,29 +291,49 @@ export class LightboxModal {
       this.applyTransform(true);
     });
 
-    // Cảm ứng: Vuốt trái/phải đổi ảnh, chụm 2 ngón zoom, chạm đúp zoom, kéo 1 ngón pan
+    // Cảm ứng: Vuốt trái/phải mượt mà, chụm 2 ngón zoom đúng tâm, chạm đúp zoom đúng vị trí chạm, kéo 1 ngón pan
+    this.isPinching = false;
+    this.pinchMidX = 0;
+    this.pinchMidY = 0;
+    this.swipeStartTime = 0;
+
     this.stageEl.addEventListener(
       'touchstart',
       (e) => {
         if (e.target.closest('button')) return;
 
         if (e.touches.length === 2) {
+          this.isDragging = false;
+          this.isPinching = true;
           this.pinchStartDist = this.touchDistance(e.touches);
           this.pinchStartScale = this.scale;
+          this.pinchOriginX = this.translateX;
+          this.pinchOriginY = this.translateY;
+          const rect = this.stageEl.getBoundingClientRect();
+          this.pinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - (rect.left + rect.width / 2);
+          this.pinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - (rect.top + rect.height / 2);
           return;
         }
 
-        if (e.touches.length === 1) {
+        if (e.touches.length === 1 && !this.isPinching) {
+          const touch = e.touches[0];
           const now = Date.now();
           if (now - this.lastTapTime < 280) {
-            this.setZoom(this.scale > 1.05 ? 1 : 2.3);
+            // Chạm 2 lần: zoom thẳng vào đúng vùng ảnh vừa chạm (hoặc thu về 100%)
+            if (this.scale > 1.05) {
+              this.setZoom(1, true);
+            } else {
+              this.zoomAtPoint(2.5, touch.clientX, touch.clientY);
+            }
             this.lastTapTime = 0;
+            this.isDragging = false;
             return;
           }
           this.lastTapTime = now;
 
-          this.swipeStartX = e.touches[0].clientX;
-          this.swipeStartY = e.touches[0].clientY;
+          this.swipeStartX = touch.clientX;
+          this.swipeStartY = touch.clientY;
+          this.swipeStartTime = now;
           this.dragOriginX = this.translateX;
           this.dragOriginY = this.translateY;
           this.isDragging = true;
@@ -325,15 +345,22 @@ export class LightboxModal {
     this.stageEl.addEventListener(
       'touchmove',
       (e) => {
-        if (e.touches.length === 2 && this.pinchStartDist > 0) {
+        if (e.touches.length === 2 && this.isPinching && this.pinchStartDist > 0) {
           e.preventDefault();
           const dist = this.touchDistance(e.touches);
-          const nextScale = this.pinchStartScale * (dist / this.pinchStartDist);
+          const nextScale = Math.max(1, Math.min(4.5, this.pinchStartScale * (dist / this.pinchStartDist)));
+          const ratio = nextScale / this.pinchStartScale;
+          const rect = this.stageEl.getBoundingClientRect();
+          const curMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - (rect.left + rect.width / 2);
+          const curMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - (rect.top + rect.height / 2);
+
+          this.translateX = curMidX - (this.pinchMidX - this.pinchOriginX) * ratio;
+          this.translateY = curMidY - (this.pinchMidY - this.pinchOriginY) * ratio;
           this.setZoom(nextScale, false);
           return;
         }
 
-        if (e.touches.length === 1 && this.isDragging) {
+        if (e.touches.length === 1 && this.isDragging && !this.isPinching) {
           const dx = e.touches[0].clientX - this.swipeStartX;
           const dy = e.touches[0].clientY - this.swipeStartY;
 
@@ -342,10 +369,12 @@ export class LightboxModal {
             this.translateX = this.dragOriginX + dx;
             this.translateY = this.dragOriginY + dy;
             this.applyTransform(false);
-          } else if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
-            // Hiệu ứng kéo nhẹ theo ngón tay khi vuốt chuyển ảnh
+          } else if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+            // Kéo mượt theo ngón tay kèm làm mờ nhẹ khi vuốt chuyển ảnh
+            e.preventDefault();
             this.imgContainerEl.style.transition = 'none';
-            this.imgContainerEl.style.transform = `translate3d(${dx * 0.45}px, 0, 0)`;
+            this.imgContainerEl.style.opacity = String(Math.max(0.55, 1 - Math.abs(dx) / 480));
+            this.imgContainerEl.style.transform = `translate3d(${dx * 0.72}px, 0, 0)`;
           }
         }
       },
@@ -353,12 +382,23 @@ export class LightboxModal {
     );
 
     this.stageEl.addEventListener('touchend', (e) => {
-      if (e.touches.length < 2) {
-        this.pinchStartDist = 0;
+      if (this.isPinching) {
+        if (e.touches.length < 2) {
+          this.isPinching = false;
+          this.pinchStartDist = 0;
+          if (this.scale <= 1.02) {
+            this.resetTransform(true);
+          } else {
+            this.clampPan();
+            this.applyTransform(true);
+          }
+        }
+        return;
       }
 
       if (!this.isDragging) return;
       this.isDragging = false;
+      this.imgContainerEl.style.opacity = '';
 
       if (this.scale > 1.02) {
         this.clampPan();
@@ -370,8 +410,10 @@ export class LightboxModal {
       if (!touch) return;
       const dx = touch.clientX - this.swipeStartX;
       const dy = touch.clientY - this.swipeStartY;
+      const elapsed = Math.max(1, Date.now() - (this.swipeStartTime || Date.now()));
+      const isQuickSwipe = Math.abs(dx) > 28 && elapsed < 260;
 
-      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      if ((Math.abs(dx) > 45 || isQuickSwipe) && Math.abs(dx) > Math.abs(dy) * 1.1) {
         this.navigate(dx < 0 ? 1 : -1);
       } else {
         this.applyTransform(true);
@@ -379,6 +421,20 @@ export class LightboxModal {
     });
   }
 
+  zoomAtPoint(targetScale, clientX, clientY) {
+    if (targetScale <= 1.05) {
+      this.setZoom(1, true);
+      return;
+    }
+    const rect = this.stageEl.getBoundingClientRect();
+    const offsetX = clientX - (rect.left + rect.width / 2);
+    const offsetY = clientY - (rect.top + rect.height / 2);
+    const nextScale = Math.max(1, Math.min(4.5, targetScale));
+    const ratio = nextScale / this.scale;
+    this.translateX = offsetX * (1 - ratio) + this.translateX * ratio;
+    this.translateY = offsetY * (1 - ratio) + this.translateY * ratio;
+    this.setZoom(nextScale, true);
+  }
   touchDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
