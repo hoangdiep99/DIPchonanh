@@ -1,16 +1,16 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.25';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.25';
-import { GalleryGrid } from './gallery.js?v=10.25';
-import { LightboxModal } from './lightbox.js?v=10.25';
-import { StorageManager } from './storage.js?v=10.25';
-import { FaceFilterEngine } from './face-filter.js?v=10.25';
-import { ExportService } from './export.js?v=10.25';
-import { AdminManager } from './admin.js?v=10.25';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.25';
-import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.25';
+import { STUDIO_CONFIG } from '../config.js?v=10.26';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.26';
+import { GalleryGrid } from './gallery.js?v=10.26';
+import { LightboxModal } from './lightbox.js?v=10.26';
+import { StorageManager } from './storage.js?v=10.26';
+import { FaceFilterEngine } from './face-filter.js?v=10.26';
+import { ExportService } from './export.js?v=10.26';
+import { AdminManager } from './admin.js?v=10.26';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.26';
+import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.26';
 
 class AppController {
   constructor() {
@@ -3582,6 +3582,99 @@ class AppController {
   }
 
   // --- Toast thông báo ---
+  // --- Quyền chủ Studio & Ảnh bìa album ---
+  isStudioOwner() {
+    if (this.adminManager && typeof this.adminManager.isLoggedIn === 'function') {
+      return this.adminManager.isLoggedIn();
+    }
+    return (
+      localStorage.getItem('studio_admin_remember') === 'true' ||
+      sessionStorage.getItem('studio_admin_session') === 'true'
+    );
+  }
+
+  async setCoverPhoto(photo) {
+    if (!photo) return;
+    const coverUrl = photo.gridUrl || photo.aiUrl || photo.originalUrl || '';
+    this.coverUrl = coverUrl;
+
+    if (this.folderId) {
+      localStorage.setItem('studio_cover_' + this.folderId, coverUrl);
+      try {
+        localStorage.setItem(
+          `studio_album_cover_${this.folderId}`,
+          JSON.stringify({
+            coverUrl,
+            fallbackUrl: photo.id ? `https://lh3.googleusercontent.com/d/${photo.id}=w800` : '',
+            photoCount: this.allPhotos?.length || 0,
+            updatedAt: Date.now(),
+          })
+        );
+      } catch (_) {}
+    }
+
+    this.applyCoverToUI(coverUrl);
+
+    const webhook = STUDIO_CONFIG.googleSheetsWebhookUrl;
+    if (webhook && this.folderId) {
+      fetch(webhook, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_cover',
+          folderId: this.folderId,
+          slug: this.albumSlug || this.folderId,
+          coverUrl,
+          coverId: photo.id || '',
+        }),
+      }).catch(() => {});
+    }
+
+    this.showToast('✅ Đã đặt làm ảnh bìa album!', 'success');
+  }
+
+  async loadCachedCover() {
+    if (this.folderId) {
+      const local = localStorage.getItem('studio_cover_' + this.folderId);
+      if (local) {
+        this.coverUrl = local;
+        this.applyCoverToUI(local);
+        return;
+      }
+    }
+
+    const webhook = STUDIO_CONFIG.googleSheetsWebhookUrl;
+    if (!webhook || !this.folderId) return;
+    try {
+      const slug = this.albumSlug || this.folderId;
+      const params = new URLSearchParams({ action: 'get_cover', slug, folderId: this.folderId });
+      const res = await fetch(`${webhook}?${params}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.status === 'success' && json.cover && json.cover.coverUrl) {
+        this.coverUrl = json.cover.coverUrl;
+        this.applyCoverToUI(json.cover.coverUrl);
+      }
+    } catch (_) {}
+  }
+
+  applyCoverToUI(coverUrl) {
+    const banner = document.getElementById('album-cover-banner');
+    const img = document.getElementById('album-cover-img');
+    const changeBtn = document.getElementById('btn-change-cover');
+    if (!banner || !img) return;
+    if (coverUrl) {
+      img.src = coverUrl;
+      banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+    }
+    if (changeBtn) {
+      changeBtn.classList.toggle('hidden', !this.isStudioOwner());
+    }
+  }
+
   showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
