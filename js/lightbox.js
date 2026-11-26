@@ -270,7 +270,7 @@ export class LightboxModal {
     // Nhấp đúp chuột để zoom nhanh đúng vào vị trí vừa bấm
     this.stageEl.addEventListener('dblclick', (e) => {
       if (e.target.closest('button')) return;
-      if (Date.now() - (this.lastTouchTime || 0) < 600) return;
+      if (Date.now() - (this.lastTouchTime || 0) < 900) return;
       if (this.scale > 1.05) {
         this.setZoom(1, true);
       } else {
@@ -281,6 +281,7 @@ export class LightboxModal {
     // Kéo chuột: khi đang zoom thì pan, khi chưa zoom thì kéo trái/phải để lật ảnh mượt mà
     this.mouseSwipeMode = false;
     this.stageEl.addEventListener('mousedown', (e) => {
+      if (Date.now() - (this.lastTouchTime || 0) < 900) return;
       if (e.button !== 0 || e.target.closest('button')) return;
       e.preventDefault();
       this.isDragging = true;
@@ -337,6 +338,9 @@ export class LightboxModal {
     this.pinchMidY = 0;
     this.swipeStartTime = 0;
 
+    this.lastTapX = 0;
+    this.lastTapY = 0;
+
     this.stageEl.addEventListener(
       'touchstart',
       (e) => {
@@ -358,29 +362,15 @@ export class LightboxModal {
 
         if (e.touches.length === 1 && !this.isPinching) {
           const touch = e.touches[0];
-          const now = Date.now();
-          if (now - this.lastTapTime < 280) {
-            // Chạm 2 lần: zoom thẳng vào đúng vùng ảnh vừa chạm (hoặc thu về 100%)
-            if (this.scale > 1.05) {
-              this.setZoom(1, true);
-            } else {
-              this.centerZoomAtPoint(2.5, touch.clientX, touch.clientY, true);
-            }
-            this.lastTapTime = 0;
-            this.isDragging = false;
-            return;
-          }
-          this.lastTapTime = now;
-
           this.swipeStartX = touch.clientX;
           this.swipeStartY = touch.clientY;
-          this.swipeStartTime = now;
+          this.swipeStartTime = Date.now();
           this.dragOriginX = this.translateX;
           this.dragOriginY = this.translateY;
           this.isDragging = true;
         }
       },
-      { passive: true }
+      { passive: false }
     );
 
     this.stageEl.addEventListener(
@@ -411,7 +401,6 @@ export class LightboxModal {
             this.translateY = this.dragOriginY + dy;
             this.applyTransform(false);
           } else if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
-            // Kéo mượt theo ngón tay kèm làm mờ nhẹ khi vuốt chuyển ảnh
             e.preventDefault();
             this.imgContainerEl.style.transition = 'none';
             this.imgContainerEl.style.opacity = String(Math.max(0.55, 1 - Math.abs(dx) / 480));
@@ -442,16 +431,38 @@ export class LightboxModal {
       this.isDragging = false;
       this.imgContainerEl.style.opacity = '';
 
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      const dx = touch.clientX - this.swipeStartX;
+      const dy = touch.clientY - this.swipeStartY;
+      const movedDist = Math.hypot(dx, dy);
+
+      // Kiểm tra chạm đơn / chạm đúp (khi ngón tay gần như không di chuyển)
+      if (movedDist < 14 && !e.target.closest('button')) {
+        const now = Date.now();
+        const tapDist = Math.hypot(touch.clientX - this.lastTapX, touch.clientY - this.lastTapY);
+        if (now - this.lastTapTime < 350 && tapDist < 45) {
+          e.preventDefault();
+          this.lastTapTime = 0;
+          if (this.scale > 1.05) {
+            this.setZoom(1, true);
+          } else {
+            this.centerZoomAtPoint(2.5, touch.clientX, touch.clientY, true);
+          }
+          return;
+        }
+        this.lastTapTime = now;
+        this.lastTapX = touch.clientX;
+        this.lastTapY = touch.clientY;
+        return;
+      }
+
       if (this.scale > 1.02) {
         this.clampPan();
         this.applyTransform(true);
         return;
       }
 
-      const touch = e.changedTouches[0];
-      if (!touch) return;
-      const dx = touch.clientX - this.swipeStartX;
-      const dy = touch.clientY - this.swipeStartY;
       const elapsed = Math.max(1, Date.now() - (this.swipeStartTime || Date.now()));
       const isQuickSwipe = Math.abs(dx) > 28 && elapsed < 260;
 
