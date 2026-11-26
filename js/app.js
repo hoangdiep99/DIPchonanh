@@ -1,16 +1,16 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.27';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.27';
-import { GalleryGrid } from './gallery.js?v=10.27';
-import { LightboxModal } from './lightbox.js?v=10.27';
-import { StorageManager } from './storage.js?v=10.27';
-import { FaceFilterEngine } from './face-filter.js?v=10.27';
-import { ExportService } from './export.js?v=10.27';
-import { AdminManager } from './admin.js?v=10.27';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.27';
-import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.27';
+import { STUDIO_CONFIG } from '../config.js?v=10.28';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.28';
+import { GalleryGrid } from './gallery.js?v=10.28';
+import { LightboxModal } from './lightbox.js?v=10.28';
+import { StorageManager } from './storage.js?v=10.28';
+import { FaceFilterEngine } from './face-filter.js?v=10.28';
+import { ExportService } from './export.js?v=10.28';
+import { AdminManager } from './admin.js?v=10.28';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.28';
+import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.28';
 
 class AppController {
   constructor() {
@@ -922,7 +922,7 @@ class AppController {
         trackAlbumView(
           STUDIO_CONFIG.googleSheetsWebhookUrl,
           this.folderId,
-          this.albumSlug || this.folderId
+          this.slug || this.folderId
         );
       }
 
@@ -3624,7 +3624,7 @@ class AppController {
         body: JSON.stringify({
           action: 'save_cover',
           folderId: this.folderId,
-          slug: this.albumSlug || this.folderId,
+          slug: this.slug || this.folderId,
           coverUrl,
           coverId: photo.id || '',
         }),
@@ -3647,7 +3647,7 @@ class AppController {
     const webhook = STUDIO_CONFIG.googleSheetsWebhookUrl;
     if (!webhook || !this.folderId) return;
     try {
-      const slug = this.albumSlug || this.folderId;
+      const slug = this.slug || this.folderId;
       const params = new URLSearchParams({ action: 'get_cover', slug, folderId: this.folderId });
       const res = await fetch(`${webhook}?${params}`);
       if (!res.ok) return;
