@@ -368,16 +368,14 @@ function doPost(e) {
 
     // 0.3. Phân hệ Xác Thực Đăng Nhập Admin Bí Mật Trên Máy Chủ Google (action=admin_login)
     if (data.action === 'admin_login') {
-      var inputUser = (data.username || DEFAULT_ADMIN_USER).toString().trim().toLowerCase();
       var inputPass = (data.password || '').toString().trim();
       var props = PropertiesService.getScriptProperties();
-      var savedUser = (props.getProperty('studio_admin_user') || DEFAULT_ADMIN_USER).toLowerCase();
       var savedPass = props.getProperty('studio_admin_pass') || DEFAULT_ADMIN_PASS;
 
-      if (inputPass && inputPass === savedPass && inputUser === savedUser) {
+      if (inputPass && inputPass === savedPass) {
         return jsonResponse({ status: 'success', authenticated: true, adminToken: getOrCreateAdminToken() });
       }
-      return jsonResponse({ status: 'error', authenticated: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' });
+      return jsonResponse({ status: 'error', authenticated: false, message: 'Mật khẩu không chính xác!' });
     }
 
     // 0.4. Phân hệ Đổi Mật Khẩu Admin Đồng Bộ Mọi Thiết Bị (action=admin_change_pass)
