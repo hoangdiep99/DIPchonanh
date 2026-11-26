@@ -5,11 +5,11 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.29';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.29';
-import { FaceFilterEngine } from './face-filter.js?v=10.29';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.29';
-import { getAlbumViewStats } from './analytics.js?v=10.29';
+import { STUDIO_CONFIG } from '../config.js?v=10.30';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.30';
+import { FaceFilterEngine } from './face-filter.js?v=10.30';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.30';
+import { getAlbumViewStats } from './analytics.js?v=10.30';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -1522,6 +1522,7 @@ export class AdminManager {
     const topDevEl = document.getElementById('stats-top-device');
     const chartEl = document.getElementById('stats-daily-chart');
     const devicesEl = document.getElementById('stats-devices-list');
+    const locationsEl = document.getElementById('stats-locations-list');
     const recentEl = document.getElementById('stats-recent-list');
 
     if (totalEl) totalEl.textContent = String(stats.totalViews || 0);
@@ -1529,7 +1530,11 @@ export class AdminManager {
 
     const relTime = this.formatRelativeViewTime(stats.lastViewedAt);
     if (lastTimeEl) lastTimeEl.textContent = relTime || 'Chưa có';
-    if (lastDevEl) lastDevEl.textContent = stats.lastDevice ? `Thiết bị: ${stats.lastDevice}` : 'Chưa có lượt xem';
+    if (lastDevEl) {
+      const devTxt = stats.lastDeviceDetail || stats.lastDevice;
+      const locTxt = stats.lastLocation ? ` • ${stats.lastLocation}` : '';
+      lastDevEl.textContent = devTxt ? `${devTxt}${locTxt}` : 'Chưa có lượt xem';
+    }
 
     // Thiết bị chính
     const devs = stats.devices || {};
@@ -1573,6 +1578,19 @@ export class AdminManager {
       devicesEl.innerHTML = rows.join('');
     }
 
+    // Khách đến từ đâu (theo IP)
+    if (locationsEl) {
+      const locs = stats.locations || [];
+      if (locs.length === 0) {
+        locationsEl.innerHTML = '<span style="font-size:12px;color:var(--ink-muted);">Chưa có dữ liệu vị trí (sẽ tự ghi nhận ở các lượt xem mới).</span>';
+      } else {
+        locationsEl.innerHTML = locs
+          .slice(0, 8)
+          .map((l) => `<div class="stats-device-row"><span>📍 ${l.name}</span><strong>${l.count} lượt</strong></div>`)
+          .join('');
+      }
+    }
+
     // Lịch sử truy cập gần đây
     if (recentEl) {
       const recents = stats.recentVisits || [];
@@ -1582,7 +1600,9 @@ export class AdminManager {
         recentEl.innerHTML = recents
           .map((v) => {
             const t = this.formatRelativeViewTime(v.ts) || v.ts;
-            return `<span class="stats-recent-chip">🕒 ${t} • ${v.device || 'PC'}</span>`;
+            const devLabel = v.deviceDetail || v.device || 'PC';
+            const locLabel = v.location ? ` • 📍 ${v.location}` : '';
+            return `<span class="stats-recent-chip">🕒 ${t} • ${devLabel}${locLabel}</span>`;
           })
           .join('');
       }

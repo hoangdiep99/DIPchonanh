@@ -291,6 +291,8 @@ function doPost(e) {
           ts: data.timestamp || new Date().toISOString(),
           visitorId: data.visitorId || '',
           device: data.device || 'PC',
+          deviceDetail: data.deviceDetail || '',
+          location: data.location || '',
           folderId: data.folderId || ''
         });
         // Giữ tối đa 500 lượt gần nhất
@@ -876,6 +878,7 @@ function computeViewStats(log) {
   var lastVisit = null;
   var dailyMap = {};
   var deviceMap = { iPhone: 0, Android: 0, PC: 0 };
+  var locationMap = {};
 
   for (var i = 0; i < visits.length; i++) {
     var v = visits[i];
@@ -885,14 +888,26 @@ function computeViewStats(log) {
     if (day) dailyMap[day] = (dailyMap[day] || 0) + 1;
     var dev = v.device || 'PC';
     deviceMap[dev] = (deviceMap[dev] || 0) + 1;
+    if (v.location) {
+      locationMap[v.location] = (locationMap[v.location] || 0) + 1;
+    }
   }
 
   var dailyViews = Object.keys(dailyMap).sort().map(function(d) {
     return { date: d, count: dailyMap[d] };
   });
 
+  var locations = Object.keys(locationMap).map(function(loc) {
+    return { name: loc, count: locationMap[loc] };
+  }).sort(function(a, b) { return b.count - a.count; });
+
   var recentVisits = visits.slice(-10).reverse().map(function(v) {
-    return { ts: v.ts, device: v.device || 'PC' };
+    return {
+      ts: v.ts,
+      device: v.device || 'PC',
+      deviceDetail: v.deviceDetail || '',
+      location: v.location || ''
+    };
   });
 
   return {
@@ -900,8 +915,11 @@ function computeViewStats(log) {
     uniqueVisitors: Object.keys(visitorSet).length,
     lastViewedAt: lastVisit ? lastVisit.ts : null,
     lastDevice: lastVisit ? lastVisit.device : null,
+    lastDeviceDetail: lastVisit ? (lastVisit.deviceDetail || '') : '',
+    lastLocation: lastVisit ? (lastVisit.location || '') : '',
     dailyViews: dailyViews,
     devices: deviceMap,
+    locations: locations,
     recentVisits: recentVisits
   };
 }
