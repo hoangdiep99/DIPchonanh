@@ -273,7 +273,7 @@ export class LightboxModal {
       if (this.scale > 1.05) {
         this.setZoom(1, true);
       } else {
-        this.zoomAtPoint(2.5, e.clientX, e.clientY, true);
+        this.centerZoomAtPoint(2.5, e.clientX, e.clientY, true);
       }
     });
 
@@ -362,7 +362,7 @@ export class LightboxModal {
             if (this.scale > 1.05) {
               this.setZoom(1, true);
             } else {
-              this.zoomAtPoint(2.5, touch.clientX, touch.clientY);
+              this.centerZoomAtPoint(2.5, touch.clientX, touch.clientY, true);
             }
             this.lastTapTime = 0;
             this.isDragging = false;
