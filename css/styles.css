@@ -4544,4 +4544,52 @@ a {
   .stats-two-col {
     grid-template-columns: 1fr;
   }
+
+  /* Lightbox Mobile: tách 2 hàng trên topbar để hiển thị rõ tên ảnh, và wrap dock dưới để không tràn màn hình */
+  .lightbox-top {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+  .lightbox-file-info {
+    width: 100%;
+    gap: 8px;
+  }
+  .lightbox-index {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .lightbox-filename {
+    font-size: 13.5px;
+    flex: 1;
+    min-width: 0;
+  }
+  .lightbox-top-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 5px;
+  }
+  .lightbox-top-actions .lb-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .lightbox-top-actions .lb-hd-btn {
+    padding: 0 10px !important;
+    font-size: 11px !important;
+    white-space: nowrap;
+  }
+  .lightbox-dock {
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+  .lb-action-row {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  .lb-pill-btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    gap: 4px !important;
+  }
 }
