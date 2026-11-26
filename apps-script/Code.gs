@@ -128,7 +128,7 @@ function doGet(e) {
       var publicList = [];
       for (var pIdx = 0; pIdx < allHist.length; pIdx++) {
         var pubItem = allHist[pIdx];
-        if (pubItem && pubItem.isPublic !== false && !pubItem._deleted) {
+        if (pubItem && pubItem.isPublic !== false && !pubItem.__deleted && !pubItem._deleted && !pubItem.deleted && pubItem.client) {
           publicList.push({
             folderId: pubItem.folderId,
             client: pubItem.client,
