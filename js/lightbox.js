@@ -270,6 +270,7 @@ export class LightboxModal {
     // Nhấp đúp chuột để zoom nhanh đúng vào vị trí vừa bấm
     this.stageEl.addEventListener('dblclick', (e) => {
       if (e.target.closest('button')) return;
+      if (Date.now() - (this.lastTouchTime || 0) < 600) return;
       if (this.scale > 1.05) {
         this.setZoom(1, true);
       } else {
@@ -339,6 +340,7 @@ export class LightboxModal {
     this.stageEl.addEventListener(
       'touchstart',
       (e) => {
+        this.lastTouchTime = Date.now();
         if (e.target.closest('button')) return;
 
         if (e.touches.length === 2) {
@@ -421,6 +423,7 @@ export class LightboxModal {
     );
 
     this.stageEl.addEventListener('touchend', (e) => {
+      this.lastTouchTime = Date.now();
       if (this.isPinching) {
         if (e.touches.length < 2) {
           this.isPinching = false;
@@ -458,6 +461,22 @@ export class LightboxModal {
         this.applyTransform(true);
       }
     });
+  }
+
+  centerZoomAtPoint(targetScale, clientX, clientY, animate = true) {
+    if (targetScale <= 1.05) {
+      this.setZoom(1, animate);
+      return;
+    }
+    const rect = this.stageEl.getBoundingClientRect();
+    const offsetX = clientX - (rect.left + rect.width / 2);
+    const offsetY = clientY - (rect.top + rect.height / 2);
+    const nextScale = Math.max(1, Math.min(4.5, targetScale));
+    const imgX = (offsetX - this.translateX) / this.scale;
+    const imgY = (offsetY - this.translateY) / this.scale;
+    this.translateX = -imgX * nextScale;
+    this.translateY = -imgY * nextScale;
+    this.setZoom(nextScale, animate);
   }
 
   zoomAtPoint(targetScale, clientX, clientY, animate = true) {
