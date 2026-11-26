@@ -5,16 +5,17 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.38';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.38';
-import { FaceFilterEngine } from './face-filter.js?v=10.38';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.38';
-import { getAlbumViewStats } from './analytics.js?v=10.38';
+import { STUDIO_CONFIG } from '../config.js?v=10.39';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.39';
+import { FaceFilterEngine } from './face-filter.js?v=10.39';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.39';
+import { getAlbumViewStats } from './analytics.js?v=10.39';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
 const ADMIN_REMEMBER_KEY = 'studio_admin_remember';
 const ADMIN_CUSTOM_PASS_KEY = 'studio_admin_pass';
+const ADMIN_TOKEN_KEY = 'studio_admin_token';
 
 function toSlug(str) {
   if (!str) return '';
@@ -184,6 +185,7 @@ export class AdminManager {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_admin_history',
+          adminToken: this.getAdminToken(),
           history: payloadList,
         }),
       });
@@ -223,7 +225,9 @@ export class AdminManager {
     }
 
     try {
-      const resp = await fetch(`${webhookUrl}?action=get_admin_history&_t=${Date.now()}`);
+      const token = this.getAdminToken();
+      if (!token) return;
+      const resp = await fetch(`${webhookUrl}?action=get_admin_history&adminToken=${encodeURIComponent(token)}&_t=${Date.now()}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data && data.status === 'success' && Array.isArray(data.history) && data.history.length > 0) {
@@ -380,7 +384,13 @@ export class AdminManager {
     });
   }
 
+  getAdminToken() {
+    return localStorage.getItem(ADMIN_TOKEN_KEY) || sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
+  }
+
   isLoggedIn() {
+    const token = this.getAdminToken();
+    if (!token) return false;
     const isRemembered = localStorage.getItem(ADMIN_REMEMBER_KEY) === 'true';
     return isRemembered || sessionStorage.getItem('studio_admin_session') === 'true';
   }
@@ -400,7 +410,11 @@ export class AdminManager {
     }
   }
 
-  grantAccess(remember = true) {
+  grantAccess(remember = true, adminToken = '') {
+    if (adminToken) {
+      sessionStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
+      if (remember) localStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
+    }
     if (remember) {
       localStorage.setItem(ADMIN_REMEMBER_KEY, 'true');
     }
@@ -447,7 +461,7 @@ export class AdminManager {
 
       if (json && json.authenticated === true) {
         const remember = this.rememberCheckbox ? this.rememberCheckbox.checked : true;
-        this.grantAccess(remember);
+        this.grantAccess(remember, json.adminToken || "");
         return;
       }
 
@@ -485,6 +499,8 @@ export class AdminManager {
   handleLogout() {
     localStorage.removeItem(ADMIN_REMEMBER_KEY);
     sessionStorage.removeItem('studio_admin_session');
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
     this.checkAuthState();
   }
 
@@ -522,6 +538,12 @@ export class AdminManager {
       const json = await resp.json();
       if (json && json.status === 'success') {
         localStorage.removeItem(ADMIN_CUSTOM_PASS_KEY);
+        if (json.adminToken) {
+          sessionStorage.setItem(ADMIN_TOKEN_KEY, json.adminToken);
+          if (localStorage.getItem(ADMIN_REMEMBER_KEY) === 'true') {
+            localStorage.setItem(ADMIN_TOKEN_KEY, json.adminToken);
+          }
+        }
         alert('✅ Đã đổi mật khẩu Studio trên Đám mây thành công! Áp dụng ngay cho mọi thiết bị (máy tính & điện thoại).');
       } else {
         alert(`⚠️ ${json?.message || 'Không thể đổi mật khẩu. Hãy chắc chắn bạn đã cập nhật Code.gs mới lên Google Apps Script!'}`);
@@ -996,6 +1018,7 @@ export class AdminManager {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'save_album',
+          adminToken: this.getAdminToken(),
             slug,
             albumData: { folderId, client, pkg, limit, download }
           })
@@ -1159,6 +1182,7 @@ export class AdminManager {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'save_clusters',
+          adminToken: this.getAdminToken(),
             folderId,
             slug,
             clusters: clusterData,
@@ -1190,6 +1214,7 @@ export class AdminManager {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 action: 'save_quality',
+          adminToken: this.getAdminToken(),
                 folderId,
                 slug,
                 quality: rawQuality,

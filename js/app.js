@@ -1,16 +1,16 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.38';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.38';
-import { GalleryGrid } from './gallery.js?v=10.38';
-import { LightboxModal } from './lightbox.js?v=10.38';
-import { StorageManager } from './storage.js?v=10.38';
-import { FaceFilterEngine } from './face-filter.js?v=10.38';
-import { ExportService } from './export.js?v=10.38';
-import { AdminManager } from './admin.js?v=10.38';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.38';
-import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.38';
+import { STUDIO_CONFIG } from '../config.js?v=10.39';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.39';
+import { GalleryGrid } from './gallery.js?v=10.39';
+import { LightboxModal } from './lightbox.js?v=10.39';
+import { StorageManager } from './storage.js?v=10.39';
+import { FaceFilterEngine } from './face-filter.js?v=10.39';
+import { ExportService } from './export.js?v=10.39';
+import { AdminManager } from './admin.js?v=10.39';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.39';
+import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.39';
 
 class AppController {
   constructor() {
@@ -529,7 +529,7 @@ class AppController {
     if (this.portalBtnRefresh) this.portalBtnRefresh.disabled = true;
 
     try {
-      const resp = await fetch(`${webhookUrl}?action=get_admin_history&_t=${Date.now()}`);
+      const resp = await fetch(`${webhookUrl}?action=get_public_albums&_t=${Date.now()}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data && data.status === 'success' && Array.isArray(data.history) && data.history.length > 0) {
@@ -849,7 +849,7 @@ class AppController {
 
                 // Dự phòng: nếu get_album chưa tìm thấy, thử tra cứu get_admin_history
                 if (!this.folderId) {
-                  const resHist = await fetch(`${webhookUrl}?action=get_admin_history`);
+                  const resHist = await fetch(`${webhookUrl}?action=get_public_albums`);
                   if (resHist.ok) {
                     const jsonHist = await resHist.json();
                     if (jsonHist && jsonHist.status === 'success' && Array.isArray(jsonHist.history)) {
@@ -2139,6 +2139,7 @@ class AppController {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_clusters',
+          adminToken: this.getAdminToken(),
           folderId: this.folderId,
           slug: slug,
           clusters: clusterData,
@@ -2216,6 +2217,7 @@ class AppController {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_clusters',
+          adminToken: this.getAdminToken(),
           folderId: this.folderId,
           slug: slug,
           clusters: clusterData,
@@ -2770,6 +2772,7 @@ class AppController {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_quality',
+          adminToken: this.getAdminToken(),
           folderId: this.folderId || '',
           slug: slug,
           quality: raw,
@@ -3583,11 +3586,16 @@ class AppController {
 
   // --- Toast thông báo ---
   // --- Quyền chủ Studio & Ảnh bìa album ---
+  getAdminToken() {
+    return localStorage.getItem('studio_admin_token') || sessionStorage.getItem('studio_admin_token') || '';
+  }
+
   isStudioOwner() {
     if (this.adminManager && typeof this.adminManager.isLoggedIn === 'function') {
       return this.adminManager.isLoggedIn();
     }
-    return (
+    const token = localStorage.getItem('studio_admin_token') || sessionStorage.getItem('studio_admin_token');
+    return Boolean(token) && (
       localStorage.getItem('studio_admin_remember') === 'true' ||
       sessionStorage.getItem('studio_admin_session') === 'true'
     );
@@ -3623,6 +3631,7 @@ class AppController {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'save_cover',
+          adminToken: this.getAdminToken(),
           folderId: this.folderId,
           slug: this.slug || this.folderId,
           coverUrl,

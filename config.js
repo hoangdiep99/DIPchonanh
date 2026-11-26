@@ -25,7 +25,7 @@ export const STUDIO_CONFIG = {
   // (Tùy chọn) Gửi thẳng thông báo về Telegram Bot từ trình duyệt.
   // Khuyến nghị: Để bảo mật Bot Token khi đẩy lên GitHub, gửi Telegram qua Google Apps Script (Code.gs) tự động 100%.
   telegramBotToken: '',
-  telegramChatId: '2062937107',
+  telegramChatId: '',
 
   // Bộ Tag ghi chú nhanh một chạm trong Lightbox
   quickTags: [

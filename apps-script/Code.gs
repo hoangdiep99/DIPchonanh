@@ -20,13 +20,13 @@
 const SPREADSHEET_ID = '';
 
 // Tùy chọn gửi thông báo Telegram (Đã được triển khai an toàn trong dự án Apps Script online của bạn)
-const TELEGRAM_BOT_TOKEN = '9098776159:AAF72tSIcJf5xgvRLnvULywnjNQyq3UhQTI';
-const TELEGRAM_CHAT_ID = '2062937107';
+const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
+const TELEGRAM_CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID';
 
 // Tài khoản & Mật khẩu Admin mặc định (Lưu bí mật trên máy chủ Google, người ngoài không thể xem)
 // Khi bạn bấm "Đổi mật khẩu" trong #admin, mật khẩu mới sẽ được lưu vào PropertiesService của Google
-const DEFAULT_ADMIN_USER = 'hoangdiep';
-const DEFAULT_ADMIN_PASS = 'diep2026';
+const DEFAULT_ADMIN_USER = 'admin';
+const DEFAULT_ADMIN_PASS = 'CHANGE_ME_2026';
 
 /**
  * GET:
@@ -122,7 +122,35 @@ function doGet(e) {
     }
 
     // 0.2. Phân hệ Đồng Bộ Danh Sách Album Cho Admin Đa Thiết Bị (?action=get_admin_history)
+    // Danh sách album công khai cho Trang chủ (chỉ trả các album isPublic !== false)
+    if (action === 'get_public_albums') {
+      var allHist = loadCloudAdminHistory() || [];
+      var publicList = [];
+      for (var pIdx = 0; pIdx < allHist.length; pIdx++) {
+        var pubItem = allHist[pIdx];
+        if (pubItem && pubItem.isPublic !== false && !pubItem._deleted) {
+          publicList.push({
+            folderId: pubItem.folderId,
+            client: pubItem.client,
+            pkg: pubItem.pkg,
+            slug: pubItem.slug,
+            limit: pubItem.limit,
+            download: pubItem.download,
+            time: pubItem.time,
+            shortUrl: pubItem.shortUrl,
+            link: pubItem.link,
+            coverUrl: pubItem.coverUrl || '',
+            isPublic: true
+          });
+        }
+      }
+      return jsonResponse({ status: 'success', history: publicList });
+    }
+
     if (action === 'get_admin_history') {
+      if (!isValidAdminToken(params.adminToken)) {
+        return jsonResponse({ status: 'unauthorized', message: 'Yêu cầu đăng nhập Admin' });
+      }
       var historyData = loadCloudAdminHistory();
       return jsonResponse({
         status: 'success',
@@ -246,6 +274,9 @@ function doPost(e) {
 
     // 0. Phân hệ Lưu Danh Bạ Album Cho Link Ngắn (?k=slug)
     if (data.action === 'save_album') {
+      if (!isValidAdminToken(data.adminToken)) {
+        return jsonResponse({ status: 'unauthorized', message: 'Yêu cầu đăng nhập Admin' });
+      }
       var slug = (data.slug || '').toLowerCase().trim();
       var albumData = data.albumData || {};
       if (slug && albumData.folderId) {
@@ -256,6 +287,9 @@ function doPost(e) {
 
     // 0.1. Phân hệ Lưu Cụm Khuôn Mặt Đám Mây (action=save_clusters)
     if (data.action === 'save_clusters') {
+      if (!isValidAdminToken(data.adminToken)) {
+        return jsonResponse({ status: 'unauthorized', message: 'Yêu cầu đăng nhập Admin' });
+      }
       var slugCluster = (data.slug || '').toLowerCase().trim();
       var folderIdCluster = data.folderId || '';
       var clustersList = data.clusters || [];
@@ -269,6 +303,9 @@ function doPost(e) {
 
     // Lưu ảnh bìa album lên cloud (action=save_cover)
     if (data.action === 'save_cover') {
+      if (!isValidAdminToken(data.adminToken)) {
+        return jsonResponse({ status: 'unauthorized', message: 'Yêu cầu đăng nhập Admin' });
+      }
       var coverSlug2 = (data.slug || data.folderId || '').toLowerCase().trim();
       if (coverSlug2) {
         saveCloudCover(coverSlug2, {
@@ -305,6 +342,9 @@ function doPost(e) {
     }
 
     if (data.action === 'save_quality') {
+      if (!isValidAdminToken(data.adminToken)) {
+        return jsonResponse({ status: 'unauthorized', message: 'Yêu cầu đăng nhập Admin' });
+      }
       var slugQuality = (data.slug || '').toLowerCase().trim();
       var folderIdQuality = data.folderId || '';
       var qualityMap = data.quality || {};
@@ -316,6 +356,9 @@ function doPost(e) {
 
     // 0.2. Phân hệ Lưu Danh Sách Album Admin Đa Thiết Bị (action=save_admin_history)
     if (data.action === 'save_admin_history') {
+      if (!isValidAdminToken(data.adminToken)) {
+        return jsonResponse({ status: 'unauthorized', message: 'Yêu cầu đăng nhập Admin' });
+      }
       var historyList = data.history || [];
       if (Array.isArray(historyList)) {
         saveCloudAdminHistory(historyList);
@@ -332,7 +375,7 @@ function doPost(e) {
       var savedPass = props.getProperty('studio_admin_pass') || DEFAULT_ADMIN_PASS;
 
       if (inputPass && inputPass === savedPass && inputUser === savedUser) {
-        return jsonResponse({ status: 'success', authenticated: true });
+        return jsonResponse({ status: 'success', authenticated: true, adminToken: getOrCreateAdminToken() });
       }
       return jsonResponse({ status: 'error', authenticated: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' });
     }
@@ -351,11 +394,17 @@ function doPost(e) {
         return jsonResponse({ status: 'error', message: 'Mật khẩu mới phải có ít nhất 4 ký tự!' });
       }
       propsAuth.setProperty('studio_admin_pass', newPass);
-      return jsonResponse({ status: 'success', message: 'Đã đổi mật khẩu Studio trên Đám mây thành công!' });
+      var rotatedToken = rotateAdminToken();
+      return jsonResponse({ status: 'success', message: 'Đã đổi mật khẩu Studio trên Đám mây thành công!', adminToken: rotatedToken });
     }
 
     // 0.5. Phân hệ Quên Mật Khẩu -> Gửi mật khẩu hiện tại về riêng Telegram chủ Studio (action=admin_forgot_pass)
     if (data.action === 'admin_forgot_pass') {
+      var forgotCache = CacheService.getScriptCache();
+      if (forgotCache.get('forgot_pass_cooldown')) {
+        return jsonResponse({ status: 'error', message: 'Vui lòng đợi 5 phút trước khi yêu cầu gửi lại mật khẩu.' });
+      }
+      forgotCache.put('forgot_pass_cooldown', '1', 300);
       if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'YOUR_TELEGRAM_BOT_TOKEN' || !TELEGRAM_CHAT_ID) {
         return jsonResponse({
           status: 'error',
@@ -924,3 +973,28 @@ function computeViewStats(log) {
   };
 }
 
+// ============================================================
+// Helper: Quản lý Admin Token bí mật trên ScriptProperties
+// ============================================================
+function getOrCreateAdminToken() {
+  var props = PropertiesService.getScriptProperties();
+  var token = props.getProperty('studio_admin_token');
+  if (!token) {
+    token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+    props.setProperty('studio_admin_token', token);
+  }
+  return token;
+}
+
+function rotateAdminToken() {
+  var props = PropertiesService.getScriptProperties();
+  var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  props.setProperty('studio_admin_token', token);
+  return token;
+}
+
+function isValidAdminToken(token) {
+  if (!token) return false;
+  var expected = getOrCreateAdminToken();
+  return String(token) === String(expected);
+}
