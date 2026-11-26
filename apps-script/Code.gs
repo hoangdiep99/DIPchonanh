@@ -875,6 +875,7 @@ function computeViewStats(log) {
   var visitorSet = {};
   var lastVisit = null;
   var dailyMap = {};
+  var deviceMap = { iPhone: 0, Android: 0, PC: 0 };
 
   for (var i = 0; i < visits.length; i++) {
     var v = visits[i];
@@ -882,10 +883,16 @@ function computeViewStats(log) {
     if (!lastVisit || v.ts > lastVisit.ts) lastVisit = v;
     var day = (v.ts || '').slice(0, 10); // YYYY-MM-DD
     if (day) dailyMap[day] = (dailyMap[day] || 0) + 1;
+    var dev = v.device || 'PC';
+    deviceMap[dev] = (deviceMap[dev] || 0) + 1;
   }
 
   var dailyViews = Object.keys(dailyMap).sort().map(function(d) {
     return { date: d, count: dailyMap[d] };
+  });
+
+  var recentVisits = visits.slice(-10).reverse().map(function(v) {
+    return { ts: v.ts, device: v.device || 'PC' };
   });
 
   return {
@@ -893,7 +900,9 @@ function computeViewStats(log) {
     uniqueVisitors: Object.keys(visitorSet).length,
     lastViewedAt: lastVisit ? lastVisit.ts : null,
     lastDevice: lastVisit ? lastVisit.device : null,
-    dailyViews: dailyViews
+    dailyViews: dailyViews,
+    devices: deviceMap,
+    recentVisits: recentVisits
   };
 }
 

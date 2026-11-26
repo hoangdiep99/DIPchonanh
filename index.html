@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=10.26">
+  <link rel="stylesheet" href="css/styles.css?v=10.27">
 </head>
 <body>
 
@@ -770,6 +770,62 @@
     </div>
   </div>
 
+  <!-- Modal Thống Kê Lượt Xem & Khách Xem Album (dành cho Studio) -->
+  <div id="album-stats-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Thống kê album">
+    <div class="modal-card" style="max-width:660px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">📊 Thống kê album</h2>
+          <p id="stats-modal-subtitle" class="modal-subtitle">Chỉ tính khách xem album. Lượt bạn tự mở không được tính.</p>
+        </div>
+        <button type="button" id="stats-modal-close" class="modal-close-btn" aria-label="Đóng thống kê">✕</button>
+      </div>
+      <div class="modal-body" id="stats-modal-body" style="padding-top:12px;">
+        <div id="stats-loading" style="text-align:center;padding:24px;color:var(--ink-secondary);font-size:13px;">
+          ⏳ Đang tải số liệu từ đám mây...
+        </div>
+        <div id="stats-content" class="hidden">
+          <div class="stats-grid-4">
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-label">👁️ Lượt xem</div>
+              <div class="stats-kpi-val" id="stats-total-views">0</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-label">👥 Người xem</div>
+              <div class="stats-kpi-val" id="stats-unique-visitors">0</div>
+              <div class="stats-kpi-sub">Theo thiết bị</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-label">🕒 Lần xem gần nhất</div>
+              <div class="stats-kpi-val stats-kpi-sm" id="stats-last-time">Chưa có</div>
+              <div class="stats-kpi-sub" id="stats-last-device">—</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-label">📱 Thiết bị chính</div>
+              <div class="stats-kpi-val stats-kpi-sm" id="stats-top-device">—</div>
+            </div>
+          </div>
+
+          <div class="stats-two-col">
+            <div class="stats-panel">
+              <div class="stats-panel-title">Lượt xem theo ngày (7 ngày gần nhất)</div>
+              <div id="stats-daily-chart" class="stats-daily-chart"></div>
+            </div>
+            <div class="stats-panel">
+              <div class="stats-panel-title">Khách xem bằng</div>
+              <div id="stats-devices-list" class="stats-devices-list"></div>
+            </div>
+          </div>
+
+          <div class="stats-panel" style="margin-top:12px;">
+            <div class="stats-panel-title">Lượt truy cập gần đây</div>
+            <div id="stats-recent-list" class="stats-recent-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Giao Diện Quản Trị Studio Tạo Link Nhanh (#admin) -->
   <section id="admin-view" class="admin-view hidden" aria-label="Trình tạo link nhanh cho Studio">
     <!-- Màn hình Đăng Nhập Quản Trị Studio -->
@@ -1240,9 +1296,9 @@
   <script src="js/jszip.min.js"></script>
 
   <!-- Script PWA (Cài đặt App độc lập) -->
-  <script src="js/pwa.js?v=10.26" defer></script>
+  <script src="js/pwa.js?v=10.27" defer></script>
 
   <!-- Script Khởi Động Ứng Dụng Chính (ESM Module) -->
-  <script type="module" src="js/app.js?v=10.26"></script>
+  <script type="module" src="js/app.js?v=10.27"></script>
 </body>
 </html>

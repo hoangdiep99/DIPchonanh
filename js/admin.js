@@ -5,11 +5,11 @@
  * - Sinh đường link siêu ngắn gọn theo tên khách (Ví dụ: ?k=namlinh hoặc ?k=doicuoi).
  * - Thao tác 1-chạm ngay trên từng card: Copy Link, Copy Zalo, Chỉnh sửa, Mở, Xóa.
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.26';
-import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.26';
-import { FaceFilterEngine } from './face-filter.js?v=10.26';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.26';
-import { getAlbumViewStats } from './analytics.js?v=10.26';
+import { STUDIO_CONFIG } from '../config.js?v=10.27';
+import { extractDriveFolderId, loadDriveAlbum } from './drive.js?v=10.27';
+import { FaceFilterEngine } from './face-filter.js?v=10.27';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.27';
+import { getAlbumViewStats } from './analytics.js?v=10.27';
 
 const ADMIN_STORAGE_KEY = 'studio_admin_history';
 const ADMIN_DELETED_KEY = 'studio_admin_deleted_albums';
@@ -1359,13 +1359,16 @@ export class AdminManager {
             <div style="font-size:11px;color:var(--ink-muted);margin-top:4px;font-family:monospace;">
               ${slugDisplay ? `<span style="color:var(--accent-success);font-weight:600;">${slugDisplay}</span> • ` : ''}ID: ${item.folderId.substring(0, 14)}... • 📅 ${item.time}
             </div>
-            <div class="history-item-views" data-views-for="${item.folderId}" style="font-size:11.5px;color:#0f766e;margin-top:4px;font-weight:500;display:none;"></div>
+            <div class="history-item-views" data-views-for="${item.folderId}" style="font-size:11.5px;color:#0f766e;margin-top:4px;font-weight:500;">👁️ 0 lượt xem</div>
           </div>
         </div>
 
         <div class="history-item-actions">
           <button type="button" class="btn btn-secondary btn-sm" data-action="view-selected" title="Xem & sao chép danh sách mã số ảnh khách đã chọn" style="color:#dc2626;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.05);font-weight:600;">
             ♥ Mã ảnh chọn
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="view-stats" title="Xem thống kê lượt xem, ngày xem & thiết bị của khách" style="color:#0f766e;border-color:rgba(15,118,110,0.3);background:rgba(15,118,110,0.06);font-weight:600;">
+            📊 Thống kê
           </button>
           <button type="button" class="btn btn-secondary btn-sm" data-action="pick-cover" title="Chọn 1 ảnh đẹp nhất trong album làm ảnh đại diện">
             🖼️ Ảnh bìa
@@ -1393,6 +1396,11 @@ export class AdminManager {
         el.addEventListener('click', () => {
           this.openSelectedCodesModal(item);
         });
+
+      // Nút Xem Thống Kê lượt xem album
+      div.querySelector('[data-action="view-stats"]')?.addEventListener('click', () => {
+        this.openAlbumStatsModal(item);
+      });
       });
 
       // Tự động kéo số lượng ảnh khách đã chọn từ Đám mây (nếu khách chọn trên điện thoại của khách)
@@ -1462,6 +1470,123 @@ export class AdminManager {
 
     this.updateAdminStats();
     this.loadHistoryViewStats(list);
+  }
+
+  async openAlbumStatsModal(item) {
+    const modal = document.getElementById('album-stats-modal');
+    const closeBtn = document.getElementById('stats-modal-close');
+    const subtitle = document.getElementById('stats-modal-subtitle');
+    const loadingEl = document.getElementById('stats-loading');
+    const contentEl = document.getElementById('stats-content');
+    if (!modal) return;
+
+    if (subtitle) {
+      subtitle.textContent = `Album: ${item.client || item.folderId} • Chỉ tính khách xem (không tính lượt admin tự mở)`;
+    }
+    loadingEl?.classList.remove('hidden');
+    contentEl?.classList.add('hidden');
+    modal.classList.remove('hidden');
+
+    const closeModal = () => modal.classList.add('hidden');
+    if (closeBtn && !closeBtn.dataset.bound) {
+      closeBtn.dataset.bound = '1';
+      closeBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+    }
+
+    const webhookUrl = STUDIO_CONFIG.googleSheetsWebhookUrl;
+    const stats = webhookUrl
+      ? await getAlbumViewStats(webhookUrl, item.slug || item.folderId, item.folderId)
+      : null;
+
+    loadingEl?.classList.add('hidden');
+    contentEl?.classList.remove('hidden');
+    this.renderStatsModal(stats || {
+      totalViews: 0,
+      uniqueVisitors: 0,
+      lastViewedAt: null,
+      lastDevice: null,
+      dailyViews: [],
+      devices: { iPhone: 0, Android: 0, PC: 0 },
+      recentVisits: [],
+    });
+  }
+
+  renderStatsModal(stats) {
+    const totalEl = document.getElementById('stats-total-views');
+    const uniqEl = document.getElementById('stats-unique-visitors');
+    const lastTimeEl = document.getElementById('stats-last-time');
+    const lastDevEl = document.getElementById('stats-last-device');
+    const topDevEl = document.getElementById('stats-top-device');
+    const chartEl = document.getElementById('stats-daily-chart');
+    const devicesEl = document.getElementById('stats-devices-list');
+    const recentEl = document.getElementById('stats-recent-list');
+
+    if (totalEl) totalEl.textContent = String(stats.totalViews || 0);
+    if (uniqEl) uniqEl.textContent = String(stats.uniqueVisitors || 0);
+
+    const relTime = this.formatRelativeViewTime(stats.lastViewedAt);
+    if (lastTimeEl) lastTimeEl.textContent = relTime || 'Chưa có';
+    if (lastDevEl) lastDevEl.textContent = stats.lastDevice ? `Thiết bị: ${stats.lastDevice}` : 'Chưa có lượt xem';
+
+    // Thiết bị chính
+    const devs = stats.devices || {};
+    const devEntries = Object.entries(devs).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
+    if (topDevEl) {
+      topDevEl.textContent = devEntries.length > 0 ? `${devEntries[0][0]} (${devEntries[0][1]})` : '—';
+    }
+
+    // Biểu đồ 7 ngày gần nhất
+    if (chartEl) {
+      const dailyMap = new Map((stats.dailyViews || []).map((d) => [d.date, d.count]));
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        days.push({ label, count: dailyMap.get(key) || 0 });
+      }
+      const maxCount = Math.max(1, ...days.map((d) => d.count));
+      chartEl.innerHTML = days
+        .map((d) => {
+          const pct = d.count > 0 ? Math.max(12, Math.round((d.count / maxCount) * 72)) : 4;
+          return `
+            <div class="stats-bar-col">
+              <span class="stats-bar-num">${d.count}</span>
+              <div class="stats-bar-fill" style="height:${pct}px;opacity:${d.count > 0 ? 1 : 0.25};"></div>
+              <span class="stats-bar-label">${d.label}</span>
+            </div>`;
+        })
+        .join('');
+    }
+
+    // Khách xem bằng thiết bị nào
+    if (devicesEl) {
+      const icons = { iPhone: '📱 iPhone / iPad', Android: '🤖 Android', PC: '💻 Máy tính (PC)' };
+      const rows = ['iPhone', 'Android', 'PC'].map((k) => {
+        const c = devs[k] || 0;
+        return `<div class="stats-device-row"><span>${icons[k]}</span><strong>${c} lượt</strong></div>`;
+      });
+      devicesEl.innerHTML = rows.join('');
+    }
+
+    // Lịch sử truy cập gần đây
+    if (recentEl) {
+      const recents = stats.recentVisits || [];
+      if (recents.length === 0) {
+        recentEl.innerHTML = '<span style="font-size:12px;color:var(--ink-muted);">Chưa có lượt khách nào mở album này.</span>';
+      } else {
+        recentEl.innerHTML = recents
+          .map((v) => {
+            const t = this.formatRelativeViewTime(v.ts) || v.ts;
+            return `<span class="stats-recent-chip">🕒 ${t} • ${v.device || 'PC'}</span>`;
+          })
+          .join('');
+      }
+    }
   }
 
   formatRelativeViewTime(isoStr) {
