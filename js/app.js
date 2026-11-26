@@ -1,16 +1,16 @@
 /**
  * Module điều phối chính của ứng dụng Studio Photo Selector
  */
-import { STUDIO_CONFIG } from '../config.js?v=10.40';
-import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.40';
-import { GalleryGrid } from './gallery.js?v=10.40';
-import { LightboxModal } from './lightbox.js?v=10.40';
-import { StorageManager } from './storage.js?v=10.40';
-import { FaceFilterEngine } from './face-filter.js?v=10.40';
-import { ExportService } from './export.js?v=10.40';
-import { AdminManager } from './admin.js?v=10.40';
-import { PhotoQualityAnalyzer } from './quality-check.js?v=10.40';
-import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.40';
+import { STUDIO_CONFIG } from '../config.js?v=10.41';
+import { loadDriveAlbum, loadDemoAlbum, stripExtension, extractDriveFolderId, clearAlbumCache } from './drive.js?v=10.41';
+import { GalleryGrid } from './gallery.js?v=10.41';
+import { LightboxModal } from './lightbox.js?v=10.41';
+import { StorageManager } from './storage.js?v=10.41';
+import { FaceFilterEngine } from './face-filter.js?v=10.41';
+import { ExportService } from './export.js?v=10.41';
+import { AdminManager } from './admin.js?v=10.41';
+import { PhotoQualityAnalyzer } from './quality-check.js?v=10.41';
+import { trackAlbumView, getAlbumViewStats } from './analytics.js?v=10.41';
 
 class AppController {
   constructor() {
