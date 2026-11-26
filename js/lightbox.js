@@ -249,6 +249,7 @@ export class LightboxModal {
 
     // Ngăn trình duyệt kéo ảnh mặc định khi kéo chuột trên máy tính
     this.imgEl?.addEventListener('dragstart', (e) => e.preventDefault());
+    this.stageEl.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // Cuộn chuột để zoom đúng vào vị trí con trỏ trên máy tính
     this.stageEl.addEventListener(

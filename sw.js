@@ -6,7 +6,7 @@
  * - Không chặn luồng ảnh Google Drive, Google Apps Script Webhook hay CDN AI.
  */
 
-const CACHE_NAME = 'dipchonanh-pwa-v10.37';
+const CACHE_NAME = 'dipchonanh-pwa-v10.38';
 const APP_SHELL = [
   './',
   './index.html',

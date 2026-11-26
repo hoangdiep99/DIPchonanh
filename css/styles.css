@@ -1366,10 +1366,10 @@ a {
   height: auto;
   object-fit: contain;
   border-radius: 4px;
-  pointer-events: auto;
-  user-select: auto;
-  -webkit-user-select: auto;
-  -webkit-touch-callout: default !important;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none !important;
 }
 
 .lightbox-loader {
@@ -4598,6 +4598,9 @@ a {
 /* Lightbox touch-action + Admin Mobile Layout (v10.32) */
 .lightbox-stage {
   touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .lightbox-img-container {
   will-change: transform, opacity;
