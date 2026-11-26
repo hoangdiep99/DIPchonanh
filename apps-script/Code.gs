@@ -20,8 +20,8 @@
 const SPREADSHEET_ID = '';
 
 // Tùy chọn gửi thông báo Telegram (Đã được triển khai an toàn trong dự án Apps Script online của bạn)
-const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN';
-const TELEGRAM_CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID';
+const TELEGRAM_BOT_TOKEN = '9098776159:AAF72tSIcJf5xgvRLnvULywnjNQyq3UhQTI';
+const TELEGRAM_CHAT_ID = '2062937107';
 
 // Tài khoản & Mật khẩu Admin mặc định (Lưu bí mật trên máy chủ Google, người ngoài không thể xem)
 // Khi bạn bấm "Đổi mật khẩu" trong #admin, mật khẩu mới sẽ được lưu vào PropertiesService của Google

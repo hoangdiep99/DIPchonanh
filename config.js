@@ -14,7 +14,7 @@ export const STUDIO_CONFIG = {
 
   // URL Web App của Google Apps Script (xem file apps-script/Code.gs) để lưu đơn về Google Sheets
   // Nếu để trống, khách vẫn có thể xem tóm tắt, sao chép danh sách và tải báo cáo.
-  googleSheetsWebhookUrl: 'https://script.google.com/macros/s/AKfycbwIRibaC2aEyIl7fmz9JZGpFhFnmLQXCEzfqT72dq2z6HS4MPgyDn4XSLJ7HntQ8WnX/exec',
+  googleSheetsWebhookUrl: 'https://script.google.com/macros/s/AKfycbxI1Sz1srW3CuL4-CS-o54lopB_R_3FzuWT-ENGJOx2TLNPEVljjEWtc-892cNHTI_p/exec',
 
   // Tài khoản đăng nhập trang Quản trị Studio (#admin)
   // Mật khẩu được lưu & xác thực bí mật 100% trên Google Apps Script (không lưu công khai trên GitHub)
