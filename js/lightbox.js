@@ -247,46 +247,85 @@ export class LightboxModal {
       }
     });
 
-    // Cuộn chuột để zoom trên máy tính
+    // Ngăn trình duyệt kéo ảnh mặc định khi kéo chuột trên máy tính
+    this.imgEl?.addEventListener('dragstart', (e) => e.preventDefault());
+
+    // Cuộn chuột để zoom đúng vào vị trí con trỏ trên máy tính
     this.stageEl.addEventListener(
       'wheel',
       (e) => {
         if (!this.isOpen) return;
         e.preventDefault();
-        const delta = e.deltaY < 0 ? 0.35 : -0.35;
-        this.setZoom(this.scale + delta);
+        const factor = e.deltaY < 0 ? 1.18 : 0.84;
+        const target = this.scale * factor;
+        if (target <= 1.02) {
+          this.setZoom(1, false);
+        } else {
+          this.zoomAtPoint(target, e.clientX, e.clientY, false);
+        }
       },
       { passive: false }
     );
 
-    // Nhấp đúp chuột để zoom nhanh
+    // Nhấp đúp chuột để zoom nhanh đúng vào vị trí vừa bấm
     this.stageEl.addEventListener('dblclick', (e) => {
       if (e.target.closest('button')) return;
-      this.setZoom(this.scale > 1.05 ? 1 : 2.4);
+      if (this.scale > 1.05) {
+        this.setZoom(1, true);
+      } else {
+        this.zoomAtPoint(2.5, e.clientX, e.clientY, true);
+      }
     });
 
-    // Kéo chuột để pan khi đang zoom
+    // Kéo chuột: khi đang zoom thì pan, khi chưa zoom thì kéo trái/phải để lật ảnh mượt mà
+    this.mouseSwipeMode = false;
     this.stageEl.addEventListener('mousedown', (e) => {
-      if (e.target.closest('button') || this.scale <= 1) return;
+      if (e.button !== 0 || e.target.closest('button')) return;
+      e.preventDefault();
       this.isDragging = true;
       this.dragStartX = e.clientX;
       this.dragStartY = e.clientY;
       this.dragOriginX = this.translateX;
       this.dragOriginY = this.translateY;
+      this.mouseSwipeMode = this.scale <= 1.02;
       this.stageEl.style.cursor = 'grabbing';
     });
 
     window.addEventListener('mousemove', (e) => {
       if (!this.isDragging) return;
-      this.translateX = this.dragOriginX + (e.clientX - this.dragStartX);
-      this.translateY = this.dragOriginY + (e.clientY - this.dragStartY);
-      this.applyTransform(false);
+      const dx = e.clientX - this.dragStartX;
+      const dy = e.clientY - this.dragStartY;
+      if (this.mouseSwipeMode) {
+        if (Math.abs(dx) > 6) {
+          this.imgContainerEl.style.transition = 'none';
+          this.imgContainerEl.style.opacity = String(Math.max(0.55, 1 - Math.abs(dx) / 520));
+          this.imgContainerEl.style.transform = `translate3d(${dx * 0.65}px, 0, 0)`;
+        }
+      } else {
+        this.translateX = this.dragOriginX + dx;
+        this.translateY = this.dragOriginY + dy;
+        this.applyTransform(false);
+      }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
       if (!this.isDragging) return;
       this.isDragging = false;
       this.stageEl.style.cursor = '';
+      this.imgContainerEl.style.opacity = '';
+
+      if (this.mouseSwipeMode) {
+        this.mouseSwipeMode = false;
+        const dx = e.clientX - this.dragStartX;
+        const dy = e.clientY - this.dragStartY;
+        if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.1) {
+          this.navigate(dx < 0 ? 1 : -1);
+        } else {
+          this.applyTransform(true);
+        }
+        return;
+      }
+
       this.clampPan();
       this.applyTransform(true);
     });
@@ -421,7 +460,7 @@ export class LightboxModal {
     });
   }
 
-  zoomAtPoint(targetScale, clientX, clientY) {
+  zoomAtPoint(targetScale, clientX, clientY, animate = true) {
     if (targetScale <= 1.05) {
       this.setZoom(1, true);
       return;
@@ -433,7 +472,7 @@ export class LightboxModal {
     const ratio = nextScale / this.scale;
     this.translateX = offsetX * (1 - ratio) + this.translateX * ratio;
     this.translateY = offsetY * (1 - ratio) + this.translateY * ratio;
-    this.setZoom(nextScale, true);
+    this.setZoom(nextScale, animate);
   }
   touchDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
